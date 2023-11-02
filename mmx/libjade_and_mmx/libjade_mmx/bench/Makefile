@@ -76,7 +76,7 @@ NAMESPACE   = jade_$(OPERATION)_$(NAMESPACE0)
 NAMESPACE1  = JADE_$(OPERATION1)_$(NAMESPACE0)
 
 IDIR        = $(subst $(BIN),$(SRC),$(@D))
-ASM         = $(IDIR)/$(OPERATION).s
+ASM         = $(IDIR)/$(OPERATION)*.s
 
 MAIN        = $(COMMON)/crypto_$(OPERATION).c
 DEFINE     ?=
