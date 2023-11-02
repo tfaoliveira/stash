@@ -1,4 +1,4 @@
 SAFETY_FLAGS := -nocheckalignment
-SRCS := kem.jazz
+SRCS := kem_jpp_patched.jazz
 include ../../../../../Makefile.common
 
