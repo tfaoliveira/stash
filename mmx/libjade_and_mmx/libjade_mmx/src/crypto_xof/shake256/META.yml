@@ -1,0 +1,4 @@
+name: SHAKE256
+type: xof
+checksumsmall: 5c88f8cc3210246c1fb9fdf84b686b024d80f35a061b4208d35a77b3aed9acab
+checksumbig: 013aa03ebe252ca0e7b00733443583546e8580dedadab428db3801381743dbd7
