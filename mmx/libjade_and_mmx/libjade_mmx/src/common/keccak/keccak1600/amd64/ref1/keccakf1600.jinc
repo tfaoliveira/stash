@@ -84,11 +84,11 @@ inline fn __set_row_ref1(
   reg ptr u64[25] e,
   reg u64[5] b,
   inline int y,
-  stack u64 s_rc
+  #mmx reg u64 s_rc
 ) -> reg ptr u64[25]
 {
   inline int x x1 x2;
-  reg u64 t;
+  reg u64 t rc;
 
   for x=0 to 5
   { 
@@ -99,7 +99,7 @@ inline fn __set_row_ref1(
     t = b[x1]; t = !t; t &= b[x2];
 
     t ^= b[x];
-    if( x==0 && y==0 ){ t ^= s_rc; }
+    if( x==0 && y==0 ){ rc = s_rc; t ^= rc; }
     e[x + y*5] = t;
   }
 
@@ -111,7 +111,7 @@ inline fn __round_ref1(reg ptr u64[25] e a, reg u64 rc) -> reg ptr u64[25]
 {
   inline int y;
   reg u64[5] b c d;
-  stack u64 s_rc;
+  #mmx reg u64 s_rc;
 
   s_rc = rc;
 
@@ -130,7 +130,7 @@ inline fn __round_ref1(reg ptr u64[25] e a, reg u64 rc) -> reg ptr u64[25]
 inline fn __keccakf1600_ref1(reg ptr u64[25] a) -> reg ptr u64[25]
 {
   reg ptr u64[24] RC;
-  stack ptr u64[24] s_RC;
+  #mmx reg ptr u64[24] s_RC;
   stack u64[25] s_e;
   reg ptr u64[25] e;
   reg u64 c rc;

@@ -82,12 +82,12 @@ inline fn __add_final_block_ref1(
 
 inline fn __absorb_ref1(
   reg ptr u64[25] state,
-  reg   u64 in inlen,
-  stack u8  s_trail_byte,
-  reg   u64 rate // rate already in bytes -- it is returned bc of spills
+  reg u64 in inlen,
+  #mmx reg u64 s_trail_byte,
+  reg u64 rate // rate already in bytes -- it is returned bc of spills
 ) -> reg ptr u64[25], reg u64
 {
-  stack u64 s_in s_inlen s_rate;
+  #mmx reg u64 s_in s_inlen s_rate;
   reg u8 trail_byte;
   reg u64 t;
 
@@ -108,7 +108,8 @@ inline fn __absorb_ref1(
   }
 
   // final block
-  trail_byte = s_trail_byte;
+  t = s_trail_byte;
+  trail_byte = (8u) t;
 
   state = __add_final_block_ref1(state, in, inlen, trail_byte, rate);
 
@@ -174,13 +175,13 @@ inline fn __xtr_bytes_ref1(
 
 inline fn __squeeze_ref1(
   reg mut ptr u64[25] state,
-  stack   u64 s_out,
-  reg     u64 outlen,
-  reg     u64 rate
+  #mmx reg u64 s_out,
+  reg u64 outlen,
+  reg u64 rate
 )
 {
   reg u64 out;
-  stack u64 s_outlen s_rate;
+  #mmx reg u64 s_outlen s_rate;
 
   // intermediate blocks
   while ( outlen > rate )
@@ -209,12 +210,12 @@ inline fn __squeeze_ref1(
 }
 
 
-inline fn __keccak1600_ref1(reg u64 out outlen in inlen, reg u8 trail_byte, reg u64 rate)
+inline fn __keccak1600_ref1(reg u64 out outlen in inlen, reg u64 trail_byte, reg u64 rate)
 {
   stack u64[25] _state;
   reg ptr u64[25] state;
-  stack u64 s_out s_outlen;
-  stack u8 s_trail_byte;
+  #mmx reg u64 s_out s_outlen;
+  #mmx reg u64 s_trail_byte;
 
   s_out = out;
   s_outlen = outlen;
@@ -233,7 +234,7 @@ inline fn __keccak1600_ref1(reg u64 out outlen in inlen, reg u8 trail_byte, reg 
 
 
 #[returnaddress="stack"]
-fn _keccak1600_ref1(reg u64 out outlen in inlen, reg u8 trail_byte, reg u64 rate)
+fn _keccak1600_ref1(reg u64 out outlen in inlen, reg u64 trail_byte, reg u64 rate)
 {
   __keccak1600_ref1(out, outlen, in, inlen, trail_byte, rate);
 }
