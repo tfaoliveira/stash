@@ -84,11 +84,11 @@ inline fn __set_row_ref1(
   reg ptr u64[25] e,
   reg u64[5] b,
   inline int y,
-  #mmx reg u64 s_rc
+  stack u64 s_rc
 ) -> reg ptr u64[25]
 {
   inline int x x1 x2;
-  reg u64 t rc;
+  reg u64 t;
 
   for x=0 to 5
   { 
@@ -99,7 +99,7 @@ inline fn __set_row_ref1(
     t = b[x1]; t = !t; t &= b[x2];
 
     t ^= b[x];
-    if( x==0 && y==0 ){ rc = s_rc; t ^= rc; }
+    if( x==0 && y==0 ){ t ^= s_rc; }
     e[x + y*5] = t;
   }
 
@@ -111,7 +111,7 @@ inline fn __round_ref1(reg ptr u64[25] e a, reg u64 rc) -> reg ptr u64[25]
 {
   inline int y;
   reg u64[5] b c d;
-  #mmx reg u64 s_rc;
+  stack u64 s_rc;
 
   s_rc = rc;
 
