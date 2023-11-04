@@ -26,6 +26,7 @@ void check_uint64_t_ulong(void){ _st_static_check(sizeof(uint64_t) == sizeof(uns
 #include "config.h"
 #include "cpucycles.c" // cmp_uint64
 #include <gsl/gsl_statistics_ulong.h> // gsl_stats_ulong_{mean,sd}
+#include <math.h>
 
 // common macros / functions
 
@@ -41,6 +42,48 @@ static uint64_t st_median(uint64_t *r, size_t length)
   else
   { return (r[(length>>1)-1] + r[(length>>1)]) >> 1; }
 }
+
+// I still don't understand why, but the first call to the following functions
+// from gsl (gsl_stats_ulong_mean, gsl_stats_ulong_sd) return not a number;
+// second call does not; couldn't find anything in the gsl library documentation
+// that indicates that it is necessary to run something like 'init_gsl' to initialize
+// some state; for the time being, it keeps running while tries < 3 (just in case...)
+// and if the computed value is still not a number then a message is printed to
+// the stderr; alternatively, gsl has available some 'incremental api' to colect
+// data during the execution: problem: this is slightly more 'intrusive'. Check
+// me later.
+static double st_gsl_stats_mean(uint64_t *data)
+{
+  double mean = 0.0;
+  int tries = 0;
+
+  mean = gsl_stats_ulong_mean(data, 1, RUNS);
+  while(isnan(mean) != 0 || tries < 3)
+  { mean = gsl_stats_ulong_mean(data, 1, RUNS);
+    tries += 1; }
+
+  if(isnan(mean) != 0)
+  { fprintf(stderr, "stabitility.c: gsl_stats_ulong_mean: mean is nan\n"); }
+
+  return mean;
+}
+
+static double st_gsl_stats_sd(uint64_t *data)
+{
+  double sd = 0.0;
+  int tries = 0;
+
+  sd = gsl_stats_ulong_sd(data, 1, RUNS);
+  while(isnan(sd) != 0 || tries < 3)
+  { sd = gsl_stats_ulong_sd(data, 1, RUNS);
+    tries += 1; }
+
+  if(isnan(sd) != 0)
+  { fprintf(stderr, "stabitility.c: gsl_stats_ulong_sd: sd is nan\n"); }
+
+  return sd;
+}
+
 
 // OPx specific macros
 
@@ -59,27 +102,23 @@ static uint64_t st_median(uint64_t *r, size_t length)
    { median_runs[op][run] = median_loops[op][0]; }
  }
 
- static int st_check_1(double sd_runs[OP1], double mean_runs[OP1], uint64_t median_runs[OP1][RUNS])
+ int st_check_1(double sd_runs[OP1], double mean_runs[OP1], uint64_t median_runs[OP1][RUNS])
  {
    size_t op;
-   double mean, sd;
    int ok = 1;
- 
+
    for (op = 0; op < OP1; op++)
    {
      qsort(&(median_runs[op][0]), RUNS, sizeof(uint64_t), cmp_uint64);
- 
-     mean = gsl_stats_ulong_mean(&(median_runs[op][0]), 1, RUNS);
-     sd   = gsl_stats_ulong_sd(&(median_runs[op][0]), 1, RUNS);
- 
-     mean_runs[op] = mean;
-     sd_runs[op]   = sd;
+
+     mean_runs[op] = st_gsl_stats_mean(&(median_runs[op][0]));
+     sd_runs[op]   = st_gsl_stats_sd(&(median_runs[op][0]));
 
      // TODO fine-tune this // isolate
-     if(sd > (mean * ST_CHK))
+     if(sd_runs[op] > (mean_runs[op] * ST_CHK))
      { ok = 0; }
    }
- 
+
    return ok;
  }
 
@@ -96,7 +135,7 @@ static uint64_t st_median(uint64_t *r, size_t length)
    size_t op, run;
    FILE *f;
 
-   // print to file or stdout: number_of_iterations, check_is_ok, sdev, mean, median, list_of_results 
+   // print to file or stdout: number_of_iterations, check_is_ok, sdev, mean, median, list_of_results
    f = stdout;
    for (op = 0; op < OP1; op++)
    { if(argc == 1) { f = fopen(op_str[op], "a"); }
@@ -175,26 +214,22 @@ static uint64_t st_median(uint64_t *r, size_t length)
  static int st_check_2(double* sd_runs[OP2], double* mean_runs[OP2], uint64_t** median_runs[OP2])
  {
    size_t op, r, len;
-   double mean, sd;
    int ok = 1;
- 
+
    for (op = 0; op < OP2; op++)
    { for (len = MININBYTES, r=0; len <= MAXINBYTES; len = inc_in(len), r +=1)
      {
        qsort(&(median_runs[op][r][0]), RUNS, sizeof(uint64_t), cmp_uint64);
- 
-       mean = gsl_stats_ulong_mean(&(median_runs[op][r][0]), 1, RUNS);
-       sd   = gsl_stats_ulong_sd(&(median_runs[op][r][0]), 1, RUNS);
-   
-       mean_runs[op][r] = mean;
-       sd_runs[op][r]   = sd;
+
+       mean_runs[op][r] = st_gsl_stats_mean(&(median_runs[op][r][0]));
+       sd_runs[op][r]   = st_gsl_stats_sd(&(median_runs[op][r][0]));
 
        // TODO fine-tune this // isolate
-       if(sd > (mean * ST_CHK))
+       if(sd_runs[op][r] > (mean_runs[op][r] * ST_CHK))
        { ok = 0; }
      }
    }
- 
+
    return ok;
  }
 
@@ -203,7 +238,7 @@ static uint64_t st_median(uint64_t *r, size_t length)
    size_t op, r, len, run;
    FILE *f;
 
-   // print to file or stdout: number_of_iterations, check_is_ok, sdev, mean, median, list_of_results 
+   // print to file or stdout: number_of_iterations, check_is_ok, sdev, mean, median, list_of_results
    f = stdout;
    for (op = 0; op < OP2; op++)
    { if(argc == 1) { f = fopen(op_str[op], "a"); }
@@ -306,28 +341,24 @@ static uint64_t st_median(uint64_t *r, size_t length)
  static int st_check_3(double** sd_runs[OP3], double** mean_runs[OP3], uint64_t*** median_runs[OP3])
  {
    size_t op, outlen, r0, inlen, r1;
-   double mean, sd;
    int ok = 1;
- 
+
    for (op = 0; op < OP3; op++)
    { for (outlen = MINOUTBYTES, r0 = 0; outlen <= MAXOUTBYTES; outlen = inc_out(outlen), r0 += 1)
      { for (inlen = MININBYTES, r1=0; inlen <= MAXINBYTES; inlen = inc_in(inlen), r1 +=1)
        {
          qsort(&(median_runs[op][r0][r1][0]), RUNS, sizeof(uint64_t), cmp_uint64);
- 
-         mean = gsl_stats_ulong_mean(&(median_runs[op][r0][r1][0]), 1, RUNS);
-         sd   = gsl_stats_ulong_sd(&(median_runs[op][r0][r1][0]), 1, RUNS);
-   
-         mean_runs[op][r0][r1] = mean;
-         sd_runs[op][r0][r1]   = sd;
+
+         mean_runs[op][r0][r1] = st_gsl_stats_mean(&(median_runs[op][r0][r1][0]));
+         sd_runs[op][r0][r1]   = st_gsl_stats_sd(&(median_runs[op][r0][r1][0]));
 
          // TODO fine-tune this // isolate
-         if(sd > (mean * ST_CHK))
+         if(sd_runs[op][r0][r1] > (mean_runs[op][r0][r1] * ST_CHK))
          { ok = 0; }
        }
      }
    }
- 
+
    return ok;
  }
 
@@ -336,7 +367,7 @@ static uint64_t st_median(uint64_t *r, size_t length)
    size_t op,outlen, r0, inlen, r1, run;
    FILE *f;
 
-   // print to file or stdout: number_of_iterations, check_is_ok, sdev, mean, median, list_of_results 
+   // print to file or stdout: number_of_iterations, check_is_ok, sdev, mean, median, list_of_results
    f = stdout;
    for (op = 0; op < OP3; op++)
    { if(argc == 1) { f = fopen(op_str[op], "a"); }
