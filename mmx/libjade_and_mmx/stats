@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+
+#set -x
+
+print_header()
+{
+  echo "| Implementation | Cycles Baseline / Cycles MMX | Difference | Overhead | Stdev Baseline / Stdev MMX |"
+  echo "|----------------|------------------------------|------------|----------|----------------------------|"
+}
+
+print_csv()
+{
+  op=$1;
+  cut=$2;
+
+  baseline=$(find libjade_baseline/bench/bin/$op -name *.csv)
+  for csv_baseline in $baseline
+  do
+    # -- 
+    id=$(basename $csv_baseline .csv)
+    baseline_results=$(cut -d',' -f$cut $csv_baseline | sed -e 's/^ *//' -e 's/,/ /g' -e 's/\s\+/ /g')
+    mmx_results=$(cut -d',' -f$cut ${csv_baseline/libjade_baseline/libjade_mmx} | sed -e 's/^ *//' -e 's/,/ /g'  -e 's/\s\+/ /g')
+
+    # -- 
+    results=$(echo "$id $baseline_results $mmx_results" | \
+      awk '{ printf "| %s ", $1
+             printf "| %d / %d ", $3, $5
+             printf "| %d ", ($3 - $5)
+             printf "| %.2f %%", (($5-$3)/$3)*100
+             printf "| %.2f / %.2f ", $2, $4
+             printf "|\n" }')
+
+    echo $results
+  done
+}
+
+
+# ##############################################################################
+# 1 op
+
+echo "## Kem and Scalarmult " 
+print_header
+
+for op in crypto_kem crypto_scalarmult; do
+  print_csv $op 3,5
+done | column -s'|' -o'|' -t
+
+# ##############################################################################
+# 2 op
+
+echo -e "\n\n"
+echo "## Hash, Stream, Onetimeauth, and Secretbox "
+print_header
+
+for op in crypto_hash crypto_stream; do
+  print_csv $op 4,6
+done | column -s'|' -o'|' -t
+
+# ##############################################################################
+# 3 op
+
+echo -e "\n\n"
+echo "## Xof "
+print_header
+
+for op in crypto_xof; do
+  print_csv $op 5,7
+done | column -s'|' -o'|' -t
+

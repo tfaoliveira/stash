@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+set -x
+
+for libjade in libjade_baseline libjade_mmx
+do
+ make -C $libjade/src   CI=1 distclean
+ make -C $libjade/bench CI=1 distclean
+ make -C $libjade/test  CI=1 distclean
+done
+

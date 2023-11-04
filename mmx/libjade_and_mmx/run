@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -x
+
+for libjade in libjade_baseline libjade_mmx
+do
+ ## clear src and compile existing implementations
+ make -C $libjade/src       CI=1 distclean
+ make -C $libjade/src   -j8 CI=1
+ make -C $libjade/src       CI=1 reporter
+
+ ## clear existing bin/ directory (clean) and compile 'bench' executables
+ make -C $libjade/bench     CI=1 clean
+ make -C $libjade/bench -j8 CI=1 DEFINE='-DRUNS=10 -DMINOUTBYTES=32 -DMAXOUTBYTES=32 -DMININBYTES=16384 -DMAXINBTYES=16384 -DST_ON -DST_PER=0.1' RANDINC='../test/common/' RANDLIB='../test/common/notrandombytes.c'
+ make -C $libjade/bench     CI=1 reporter
+ make -C $libjade/bench -j1 CI=1 run
+done
+
+
