@@ -10,6 +10,7 @@ use warnings;
 use Getopt::Long;   # to get command line options
 use Cwd 'realpath'; # realpath: symbolic links and relative-path components
 use File::Spec;     # file name functions
+use Text::Diff;     # check diff files
 
 # regular expression to match '(from XXX)? require "YYY"'
 our $RX_REQUIRE = '^'.'[\s]*'.'(?:from[\s]+(\w+)[\s+])?'.'[\s]*'.'require'.'[\s]*'.'"'.'([\w./_-]+)'.'"';
@@ -23,6 +24,10 @@ our $TEXT_BOLD = qx/tput bold/;
 our $TEXT_NORMAL = qx/tput sgr0/;
 our $TEXT_RED = "\033[0;31m" . $TEXT_BOLD;
 
+our $TB = $TEXT_BOLD;
+our $TN = $TEXT_NORMAL;
+our $TR = $TEXT_RED;
+
 sub jpp_main()
 {
   my ($in,$out) = (undef,undef); # input (-in) and output (-out) filenames
@@ -34,17 +39,19 @@ sub jpp_main()
                                  #   note2: if reverse is 'active', then the output file name does not need to be set
   my $help = 0;
   my $dry_run = 0;               # if 1, do not write to any file
+  my $safe_reverse = 1;          # if reverse, ask the user if the changes are ok
 
   # get the command-line arguments
   GetOptions(
-    'in=s' => \$in, 
+    'in=s' => \$in,
     'out=s' => \$out,
     'include|I=s' => \@include_a,
     'verbose|v' => \$verbose,
     'reverse-info!' => \$with_reverse_info,
     'reverse' => \$reverse,
     'help|h' => \$help,
-    'dry-run' => \$dry_run
+    'dry-run' => \$dry_run,
+    'check-diff!' => \$safe_reverse
   );
 
   # check -help or -h
@@ -52,14 +59,14 @@ sub jpp_main()
 
   # check if $in is defined
   if(!defined $in)
-  { print STDERR "${TEXT_RED}error: -in <input_file> is required.\n$TEXT_NORMAL---";
+  { print STDERR "${TR}error: -in <input_file> is required.\n${TN}---";
     print_usage(2);
     exit -1;
   }
 
   if($reverse)
   {
-    my ($reverse_hr) = jpp_reverse($in, $out, $dry_run, $verbose);
+    my ($reverse_hr) = jpp_reverse($in, $out, $dry_run, $safe_reverse, $verbose);
   }
   else
   { # return variables description:
@@ -100,7 +107,7 @@ sub jpp()
   # 'preprocess' is a recursive function that
   #  - starts by visiting $in and it recursivly imports the contents of required files
   #  - it appends (and returns) the contents of visited files into $preprocessed_ar (an array reference) that contains the code (one line per array element)
-  #  - it receives as arguments: 
+  #  - it receives as arguments:
   #  -- $in (first file); $include_hr (hash ref. to "-I"'s); \%visited_h (hash ref to visited files, initially empty);
   #  -- verbose (to print some debug info); level (to keep track of current search depth and do indentation, initially 0);
   my ($preprocessed_ar, $visited_hr) = preprocess($in, "entry", $include_hr, \%visited_h, $with_reverse_info, $verbose, 0);
@@ -115,11 +122,12 @@ sub jpp()
 
 sub jpp_reverse()
 {
-  my $in = shift;         # input file (-in)
-  my $out = shift;        # output file (-out)
-  my $dry_run = shift;    # do not write to files (-dry-run)
-  my $verbose = shift;    # verbose (-v)
-  my %reverse_h = ();     # 'files' -> '[code]' (final step is to update files with the code)
+  my $in = shift;           # input file (-in)
+  my $out = shift;          # output file (-out)
+  my $dry_run = shift;      # do not write to files (-dry-run), print to stdout instead
+  my $safe_reverse = shift; # ask the user about changes in files
+  my $verbose = shift;      # verbose (-v)
+  my %reverse_h = ();       # 'files' -> '[code]' (final step is to update files with the code)
 
   # get the absolute path and load the contents of the file
   $in = realpath($in);
@@ -130,8 +138,9 @@ sub jpp_reverse()
 
   my ($line_position, $reverse_hr) = preprocess_reverse($in_lines_ar, 0, \%reverse_h, $out, $verbose);
 
-  store_reverse($reverse_hr, $dry_run);
-  
+  if( check_changes_reverse($in, $out, $reverse_hr, $safe_reverse) == 1 )
+  { store_reverse($reverse_hr, $dry_run); }
+
   return $reverse_hr;
 }
 
@@ -210,7 +219,7 @@ sub preprocess
     {
       # if $1 is set ( "(?:from[\s]+(\w+)[\s+])?" ), then there is a "from 'ident'"
       # in the require statement" and $2 contains a relative path or absolute path
-      my $file = (defined $1) ? 
+      my $file = (defined $1) ?
                  File::Spec->catfile(($include_hr->{$1}), $2) : # "from 'ident' require 'path'" implies relative path
                  ((File::Spec->file_name_is_absolute($2))? $2 : File::Spec->catfile(($base),$2)); # if absolute then let it be,
                                                                                                   # otherwise concat with base from in
@@ -218,7 +227,7 @@ sub preprocess
 
       ###
       if ($with_reverse_info)
-      { my $r_string = $REQUIRE_ENTRY_TAG . 
+      { my $r_string = $REQUIRE_ENTRY_TAG .
                        $line .
                        $REQUIRE_SEPARATOR_TAG .
                        $file;
@@ -248,6 +257,80 @@ sub preprocess
 
 ################################################################################
 
+sub check_changes_reverse
+{
+  my $in = shift;
+  my $out = shift;
+  my $reserve_hr = shift;
+  my $safe_reverse = shift;
+
+  my %changed_files = ();
+  my %unchanged_files = ();
+
+  # if safe_reverse is disabled, no need to check further
+  return 1 if( $safe_reverse == 0 );
+
+  # record the diffs for every file
+  for my $fn (sort keys %$reserve_hr)
+  {
+    my $updated_code = $reserve_hr->{$fn}; # possibly updated, we don't know yet
+    my $original_code = load($fn);
+
+    ### check best way to avoid 'No newline at end of file'
+    $updated_code = join("\n", @{$updated_code});
+    $original_code = join("\n", @{$original_code});
+    ###
+
+    my $diff = diff \$updated_code, \$original_code;
+
+    if($diff eq "")
+    { $unchanged_files{$fn} = 1; }
+    else
+    { $changed_files{$fn} = $diff; }
+  }
+
+  # print unchanged files
+  print STDOUT "Unchanged files:\n";
+  for my $fn (sort keys %unchanged_files)
+  { print "  $fn\n"; }
+
+  # print modified files
+  print STDOUT " ${TB}Modified files:${TN}\n";
+  for my $fn (sort keys %changed_files)
+  { print "  ${TR}$fn${TN}\n"; }
+
+  # ask if the user wants to see the diff
+  print STDOUT "\nDo you want to ${TB}check${TN} the diff? (Y)/n: ";
+  my $answer = <STDIN>; chomp $answer;
+  if( not ($answer eq "N" or $answer eq "n") )
+  {
+    # check if $in is equal to $out (inplace, so, no diff is shown for that file)
+    print STDOUT "You did not specify -out <out_file> or <input_file> is equal to <out_file>. ";
+    print STDOUT "${TB}Hence, no diff will be shown${TN} for the following file:\n";
+    print STDOUT "${TR}$in${TN}\n";
+    print STDOUT "${TB}press ENTER to continue...${TN}\n";
+    <STDIN>;
+
+    delete $changed_files{$in};
+
+    for my $fn (sort keys %changed_files)
+    { print STDOUT "${TB}$fn${TN}\n";
+      print STDOUT $changed_files{$fn}, "\n";
+      print STDOUT "${TB}press ENTER to continue...${TN}\n";
+      <STDIN>;
+    }
+  }
+
+  print STDOUT "Do you want to ${TB}update${TN} the files? Y/(n): ";
+  $answer = <STDIN>; chomp $answer;
+  if( $answer eq "Y" or $answer eq "y" )
+  { return 1; }
+  else
+  { print STDOUT "No updates will be performed.\n"; }
+
+  return 0;
+}
+
 sub store_reverse
 {
   my $reserve_hr = shift;
@@ -265,7 +348,7 @@ sub store_reverse
   {
     for my $fn (sort keys %$reserve_hr)
     { my @code = @{$reserve_hr->{$fn}};
-      open my $fh, ">", $fn or die "Error: store $fn: $!";
+      open my $fh, ">", $fn or die "Error: store_reverse $fn: $!";
       { print $fh join("\n", @code), "\n"; }
       close $fh;
     }
@@ -278,11 +361,11 @@ sub preprocess_reverse
 
   # initialize array for code (if not defined)
   if (not defined $reverse_hr->{$current_file_name})
-  { my @lines; 
+  { my @lines;
     $reverse_hr->{$current_file_name} = \@lines;
   }
 
-  # 
+  #
   while($line_position <= $#$lines_ar)
   {
     my $line = $lines_ar->[$line_position];
@@ -311,7 +394,7 @@ sub preprocess_reverse
 
 sub print_usage
 {
-# to do: improve
+# to do: improve: check perl pod
 
   my $fh = shift;
 
@@ -319,46 +402,51 @@ sub print_usage
 The following text describes how to use jpp for preprocessing (solving all
 require statements from a Jasmin program and write the code into a single file):
 
-$TEXT_BOLD  \$ jpp -in <input_filename> -out <output_filename>$TEXT_NORMAL
+$TB  \$ jpp -in <input_filename> -out <output_filename>$TN
 
 If the program uses namespaced requires, for instance,
 > from Identifier require \"path/to/some/file.jazz\"
 
-$TEXT_BOLD  \$ jpp -in <input_file> -out <output_file> -I Identifier:<absolute_or_relative_path>$TEXT_NORMAL
+$TB  \$ jpp -in <input_file> -out <output_file> -I Identifier:<absolute_or_relative_path>$TN
 
 jpp\'s -I option follows the same format as in the Jasmin compiler. There can be
-multiple -I\'s options. 
+multiple -I\'s.
 
 By default, the preprocessed file contains the absolute path of the files that
 were included during preprocessing. This option, enabled by default, is called
-'$TEXT_BOLD-reverse-info$TEXT_NORMAL'. This information is helpful if the user wants to, eventually, 
-\"de\"preprocess the preprocessed file (it is often easier/faster to fix/update/
-experiment a given implementation if all code is in a single file). If one does
-not want to include this type of information in the preprocessed file, it can
-use \'-no-reverse-info\' just as follows:
+$TB-reverse-info$TN. This information is helpful if the user wants to, eventually,
+reverse the preprocessing. It is often easier/faster to fix/update/experiment a
+given implementation if all code is in a single file. If one does not want to
+include this type of information in the preprocessed file, it can use
+-no-reverse-info as follows:
 
-$TEXT_BOLD  \$ jpp -in <input_file> -out <output_file> -no-reverse-info$TEXT_NORMAL
+$TB  \$ jpp -in <input_file> -out <output_file> -no-reverse-info$TN
 
-This option instructs jpp to insert some additional information in <output_file>
-(essentially, the real path from where the file contents came from). To reverse
-the preprocessing step:
+To reverse the preprocessing (which requires a file produced with -reverse-info):
 
-$TEXT_BOLD  \$ jpp -in <input_file> -out <output_file> -reverse$TEXT_NORMAL
+$TB  \$ jpp -in <input_file> -out <output_file> -reverse$TN
 
-It is also possible to perform a dry run where no file is written. Jasmin code
-is written to stdout instead.
+By default, option $TB-check-diff$TN is active when using -reverse. This means
+that, when using -reverse, the user sees the files that will not be modified and
+the ones that will be modified. The user can select to see the diffs (one by one).
+As a final step, the jpp ask if the user wants to proceed with the update. It is
+possible to avoid this interaction with -no-check-diff.
 
-$TEXT_BOLD  \$ jpp -in <input_file> -out <output_file> -dry-run$TEXT_NORMAL
-
-jpp only has one mandatory argument: \'-in <input_file>\'. If \'-out\' is
-not specified, then \'<input_file>\' is assumed to the be \'<output_file>\'.
-Consider the following commands. The first preprocess file.jazz (including
-all required code in file.jazz), and the second restores file.jazz to the state.
-If, in between those two commands, the user updates file.jazz, then the
+jpp has one mandatory argument: -in <input_file>. If -out is not specified, then
+<input_file> is assumed to the be <output_file>. Consider the following commands.
+The first command solves all requires from file.jazz and its dependencies and
+writes the code in file.jazz. The second command writes back into the corresponding
+files. If, in between those two commands, the user updates file.jazz, then the
 performed changes are propagated to the corresponding files.
 
-$TEXT_BOLD  \$ jpp -in file.jazz
-$TEXT_BOLD  \$ jpp -in file.jazz -reverse
+$TB  \$ jpp -in file.jazz$TN
+$TB  \$ jpp -in file.jazz -reverse$TN
+
+In this context, and as a final note, it is important that the user does not
+modify the lines that start by:
+
+  ${TB}$REQUIRE_ENTRY_TAG${TN}
+  ${TB}$REQUIRE_EXIT_TAG${TN}
 
 ";
   print STDOUT $help if($fh == 1);
