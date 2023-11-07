@@ -6,8 +6,8 @@
 * The following link contains a Curve25519 specification in EasyCrypt where a `fold` is used:
   * https://github.com/tfaoliveira/libjc/blob/x25519/proof/crypto_scalarmult/curve25519/Curve25519_Spec.ec
 * Goal: being able to deal with the proof quickly:
-  * Formally verified version of `fold` is provided by a Jasmin stdlib (some information down bellow);
-  * Function given to `fold`, in this particular instance, can be proven correct with CryptoLine;
+  * Formally verified version of `fold` is provided by a Jasmin stdlib (some information down bellow)
+  * Function given to `fold`, in this particular instance, can be proven correct with CryptoLine
   * Note: it seems to be the case that even in the case where the EC specification is imperative (`while` instead of `fold`), using `fold` in Jasmin might be advantageous (assuming that there are EC theories that enable the developers to quickly relate the Jasmin `fold` to EC `whiles`).
 
 ## Sphincs+
@@ -15,7 +15,7 @@
 ### Templates
 
 * Problem: in Jasmin, array lengths must be known during compiling time
-* Consequences: Implies having different functions for different files; difficult to develop/maintain
+* Consequences: Implies having different functions for different array lengths; difficult to develop/maintain
 * Solution: templates (in fact, a possible solution from the set viable solutions; another one, for the long term, would be to have support for unknown array lengths in internal functions)
 * `Jasmin preprocessor`: [https://github.com/ruipedro16/jasmin-preprocessor/](https://github.com/ruipedro16/jasmin-preprocessor/)
 * Simple example: `thash` from Sphincs+
@@ -24,20 +24,18 @@
 
 ### Functions as arguments and abstract inline structs
 * What about functions as parameters and abstract types/abstract structs?
-* Example: `treehashx1` from Sphincs+
+* Example: `treehashx1` from Sphincs+: https://github.com/tfaoliveira/sphincsplus-jasmin/blob/ref-jasmin/ref/utilsx1.c#L23
 * Solution: 
-  * Step 1: allow for **inline** (first step) **functions** to be passed **as arguments** -- if they comply with the expected API (necessary but not sufficient, see next)
-  * Step 2: support **inline structs** -- similar to typedef struct from C, but fields would be expanded (note to self: I still need to write notes about this and push them to the Jasmin TODO list -- result from Sophia-202310);
-  * Step 3: allow for **abstract inline structs**
+  * Step 1: support **inline** (first step) **functions** to be passed **as arguments** -- if they comply with the expected API (necessary but not sufficient)
+  * Step 2: support **inline structs** -- similar to typedef struct from C, but fields would be expanded during inlining compilation step (note to self: I still need to write notes about this and push them to the Jasmin TODO list -- result from Sophia-202310)
+  * Step 3: support **abstract inline structs**
 
-* Previous solution allows to implement the following function in a very clean way (simplifies proof and reduces development/maintenance effort)
-  * https://github.com/tfaoliveira/sphincsplus-jasmin/blob/ref-jasmin/ref/utilsx1.c#L23
+* Previous solution allows to implement `treehashx1` in a very clean way (simplifies proof and reduces development/maintenance effort)
 
 ### Jasmin preprocessor approach 
 
 * Motivated by Sphincs+ 
-* Many other applications
-* Prototyping new features: https://github.com/ruipedro16/jasmin-preprocessor/
+* https://github.com/ruipedro16/jasmin-preprocessor/
 * Goal: have native support in the Jasmin compiler
 
 
@@ -118,7 +116,7 @@ inline fn __map1<N, ITER>[F;A](reg ptr A[N] a) -> reg ptr A[N]
 
 ## Jasmin Standard Library for high-level constructions (but not only):
 
-* Jasmin library (jstdlib?) that provides generic functions **(map, fold, filter, ...)** with EC proofs
+* Jasmin library (**jstdlib**?) that provides generic functions **(map, fold, filter, ...)** with EC proofs
 * Goal: speed up development and correctness proofs
 * Generic **conditions library**:
   * https://github.com/tfaoliveira/sphincsplus-jasmin/blob/ref-jasmin/ref-jasmin/generic/conditions.jinc
