@@ -281,7 +281,7 @@ sub check_changes_reverse
     $original_code = join("\n", @{$original_code});
     ###
 
-    my $diff = diff \$updated_code, \$original_code;
+    my $diff = diff \$original_code, \$updated_code;
 
     if($diff eq "")
     { $unchanged_files{$fn} = 1; }
@@ -305,13 +305,15 @@ sub check_changes_reverse
   if( not ($answer eq "N" or $answer eq "n") )
   {
     # check if $in is equal to $out (inplace, so, no diff is shown for that file)
-    print STDOUT "You did not specify -out <out_file> or <input_file> is equal to <out_file>. ";
-    print STDOUT "${TB}Hence, no diff will be shown${TN} for the following file:\n";
-    print STDOUT "${TR}$in${TN}\n";
-    print STDOUT "${TB}press ENTER to continue...${TN}\n";
-    <STDIN>;
+    if($in eq $out)
+    { print STDOUT "You did not specify -out <out_file> or <input_file> is equal to <out_file>. ";
+      print STDOUT "${TB}Hence, no diff will be shown${TN} for the following file:\n";
+      print STDOUT "${TR}$in${TN}\n";
+      print STDOUT "${TB}press ENTER to continue...${TN}\n";
+      <STDIN>;
 
-    delete $changed_files{$in};
+      delete $changed_files{$in};
+    }
 
     for my $fn (sort keys %changed_files)
     { print STDOUT "${TB}$fn${TN}\n";
