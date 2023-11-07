@@ -25,9 +25,9 @@
 * What about functions as parameters and abstract types/abstract structs?
 * Example: `treehashx1` from Sphincs+
 * Solution: 
-  * Step 1: allow for inline (first step) functions to be passed as parameters -- if they comply with the expected API (necessary but not sufficient, see next)
-  * Step 2: support inline structs -- similar to typedef struct from C, but fields would be expanded (note to self: I still need to write notes about this and push them to the Jasmin TODO list -- result from Sophia-202310);
-  * Step 3: allow for abstract inline structs
+  * Step 1: allow for **inline** (first step) **functions** to be passed **as arguments** -- if they comply with the expected API (necessary but not sufficient, see next)
+  * Step 2: support **inline structs** -- similar to typedef struct from C, but fields would be expanded (note to self: I still need to write notes about this and push them to the Jasmin TODO list -- result from Sophia-202310);
+  * Step 3: allow for **abstract inline structs**
 
 * Previous solution allows to implement the following function in a very clean way (simplifies proof and reduces development/maintenance effort)
   * https://github.com/tfaoliveira/sphincsplus-jasmin/blob/ref-jasmin/ref/utilsx1.c#L23
@@ -46,7 +46,7 @@
   * [reduce32](https://github.com/PQClean/PQClean/blob/d3f62d23f651cc87810bac71ab5197a160f6b494/crypto_sign/dilithium3/clean/reduce.c#L33)
   * [poly_reduce](https://github.com/PQClean/PQClean/blob/d3f62d23f651cc87810bac71ab5197a160f6b494/crypto_sign/dilithium3/clean/poly.c#L20C6-L20C42)
 
-* The previous code can be implemented as follows in (high-level) Jasmin *requires [jasmin-preprocessor](https://github.com/ruipedro16/jasmin-preprocessor/)*:
+* The previous code can be implemented as follows in (high-level) Jasmin -- requires [jasmin-preprocessor](https://github.com/ruipedro16/jasmin-preprocessor/):
 
 ```
 inline fn __reduce32_8380417(reg u32 a) -> reg u32
@@ -117,9 +117,9 @@ inline fn __map1<N, ITER>[F;A](reg ptr A[N] a) -> reg ptr A[N]
 
 ## Jasmin Standard Library for high-level constructions (but not only):
 
-* Jasmin library (jstdlib?) that provides generic functions *(map, fold, filter, ...)* with EC proofs
+* Jasmin library (jstdlib?) that provides generic functions **(map, fold, filter, ...)** with EC proofs
 * Goal: speed up development and correctness proofs
-* Generic conditions library:
+* Generic **conditions library**:
   * https://github.com/tfaoliveira/sphincsplus-jasmin/blob/ref-jasmin/ref-jasmin/generic/conditions.jinc
   * Example:
 ```
