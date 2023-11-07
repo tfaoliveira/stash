@@ -5,9 +5,10 @@
 * Idea: what if we could implement the montgomery ladder using a `fold`? Would it simplify proofs?
 * The following link contains a Curve25519 specification in EasyCrypt where a `fold` is used:
   * https://github.com/tfaoliveira/libjc/blob/x25519/proof/crypto_scalarmult/curve25519/Curve25519_Spec.ec
-* Goal: being able to deal with the proof quickly
+* Goal: being able to deal with the proof quickly:
   * Formally verified version of `fold` is provided by a Jasmin stdlib (some information down bellow);
-  * Function given to `fold`, in this particular instance, can be proven correct with, for instance, CryptoLine
+  * Function given to `fold`, in this particular instance, can be proven correct with CryptoLine;
+  * Note: it seems to be the case that even in the case where the EC specification is imperative (`while` instead of `fold`), using `fold` in Jasmin might be advantageous (assuming that there are EC theories that enable the developers to quickly relate the Jasmin `fold` to EC `whiles`).
 
 ## Sphincs+
 
