@@ -1,0 +1,118 @@
+// #newfeature
+//
+// Variable spills are encapsulated by functions:
+//
+// * first, to improve code legibility; 
+//
+// * second, they can be discarded as identity functions for the context of EasyCrypt;
+//
+// * third, ideally, the Jasmin compiler could provide such a feature: extend #copy()
+// such that it would take a set of variables as inputs and would move them the to
+// variables of output: for instance, to move a set of variables a, b, and c into
+// a_s, b_s, and c_s, one would write a_s, b_s, c_s = #copy(a,b,c), where, if a_s,
+// b_s, and c_s have type reg u64, a_s could have any compatible type such as stack
+// u64, #mmx u64, and even reg u64. Such an extension should work for mixed-type
+// variable sets where, for instance, a could have type reg ptr u8[1], b reg u64,
+// and c stack u16. The only restriction is that there should be a defined mov
+// instruction for the corresponding data: this means that memory to memory moves
+// should be avoided (I suggest a compilation error since it is more effective in
+// such cases).
+//
+// With proper analysis in the context of extraction to EC, such copies could even
+// be removed from the corresponding extraction to improve proof maintainability
+// and reduce noise while doing the proofs.
+
+
+// gen_matrix_sample
+
+inline fn spill_gen_matrix_sample(
+  reg u64 j,
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix,
+  reg u64 matrix_offset)
+  ->
+  #mmx reg u64,
+  #mmx reg ptr u16[KYBER_K * KYBER_K * KYBER_N],
+  #mmx reg u64
+{
+  #mmx reg u64 j_s;
+  #mmx reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix_s;
+  #mmx reg u64 matrix_offset_s;
+
+  j_s = j;
+  matrix_s = matrix;
+  matrix_offset_s = matrix_offset;
+
+  return j_s, matrix_s, matrix_offset_s;
+}
+
+inline fn unspill_gen_matrix_sample(
+  #mmx reg u64 j_s,
+  #mmx reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix_s,
+  #mmx reg u64 matrix_offset_s)
+  ->
+  reg u64,
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N],
+  reg u64
+{
+  reg u64 j;
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix;
+  reg u64 matrix_offset;
+
+  j = j_s;
+  matrix = matrix_s;
+  matrix_offset = matrix_offset_s;
+
+  return j, matrix, matrix_offset;
+}
+
+
+// gen_matrix
+
+inline fn spill_gen_matrix(
+  reg u64 i,
+  reg u64 j,
+  reg u64 transpose,
+  reg ptr u8[32] rho)
+  ->
+  #mmx reg u64,
+  #mmx reg u64,
+  #mmx reg u64,
+  #mmx reg ptr u8[32]
+{
+  #mmx reg u64 i_s;
+  #mmx reg u64 j_s;
+  #mmx reg u64 transpose_s;
+  #mmx reg ptr u8[32] rho_s;
+
+  i_s = i;
+  j_s = j;
+  transpose_s = transpose;
+  rho_s = rho;
+
+  return i_s, j_s, transpose_s, rho_s;
+}
+
+inline fn unspill_gen_matrix(
+  #mmx reg u64 i_s,
+  #mmx reg u64 j_s,
+  #mmx reg u64 transpose_s,
+  #mmx reg ptr u8[32] rho_s)
+  ->
+  reg u64,
+  reg u64,
+  reg u64,
+  reg ptr u8[32]
+{
+  reg u64 i;
+  reg u64 j;
+  reg u64 transpose;
+  reg ptr u8[32] rho;
+
+  i = i_s;
+  j = j_s;
+  transpose = transpose_s;
+  rho = rho_s;
+
+  return i, j, transpose, rho;
+}
+

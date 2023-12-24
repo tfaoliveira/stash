@@ -1,0 +1,117 @@
+////////////////////////////////////////////////////////////////////////////////
+// gen_matrix_sample
+
+inline fn spill_gen_matrix_sample_avx2(
+  reg u64 j,
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix,
+  reg u64 matrix_offset)
+  ->
+  #mmx reg u64,
+  #mmx reg ptr u16[KYBER_K * KYBER_K * KYBER_N],
+  #mmx reg u64
+{
+  #mmx reg u64 j_s;
+  #mmx reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix_s;
+  #mmx reg u64 matrix_offset_s;
+
+  j_s = j;
+  matrix_s = matrix;
+  matrix_offset_s = matrix_offset;
+
+  return j_s, matrix_s, matrix_offset_s;
+}
+
+inline fn unspill_gen_matrix_sample_avx2(
+  #mmx reg u64 j_s,
+  #mmx reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix_s,
+  #mmx reg u64 matrix_offset_s)
+  ->
+  reg u64,
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N],
+  reg u64
+{
+  reg u64 j;
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix;
+  reg u64 matrix_offset;
+
+  j = j_s;
+  matrix = matrix_s;
+  matrix_offset = matrix_offset_s;
+
+  return j, matrix, matrix_offset;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// gen_matrix 
+
+inline fn spill_gen_matrix_1_avx2(
+  reg u64 b,
+  reg u64 transpose,
+  reg ptr u8[32] rho)
+  ->
+  #mmx reg u64,
+  #mmx reg u64,
+  #mmx reg ptr u8[32]
+{
+  #mmx reg u64 b_s transpose_s;
+  #mmx reg ptr u8[32] rho_s;
+
+  b_s = b;
+  transpose_s = transpose;
+  rho_s = rho;
+
+  return b_s, transpose_s, rho_s;
+}
+
+inline fn unspill_gen_matrix_1_avx2(
+  #mmx reg u64 b_s,
+  #mmx reg u64 transpose_s,
+  #mmx reg ptr u8[32] rho_s)
+  ->
+  reg u64,
+  reg u64,
+  reg ptr u8[32]
+{
+  reg u64 b transpose;
+  reg ptr u8[32] rho;
+
+  b = b_s;
+  transpose = transpose_s;
+  rho = rho_s;
+
+  return b, transpose, rho;
+}
+
+//
+
+inline fn spill_gen_matrix_2_avx2(
+  reg u64 transpose,
+  reg ptr u8[32] rho)
+  ->
+  #mmx reg u64,
+  #mmx reg ptr u8[32]
+{
+  #mmx reg u64 transpose_s;
+  #mmx reg ptr u8[32] rho_s;
+
+  transpose_s = transpose;
+  rho_s = rho;
+
+  return transpose_s, rho_s;
+}
+
+inline fn unspill_gen_matrix_2_avx2(
+  #mmx reg u64 transpose_s,
+  #mmx reg ptr u8[32] rho_s)
+  ->
+  reg u64,
+  reg ptr u8[32]
+{
+  reg u64 transpose;
+  reg ptr u8[32] rho;
+
+  transpose = transpose_s;
+  rho = rho_s;
+
+  return transpose, rho;
+}

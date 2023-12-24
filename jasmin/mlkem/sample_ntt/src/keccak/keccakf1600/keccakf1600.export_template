@@ -1,0 +1,35 @@
+
+export fn keccakf1600(reg u64 state_ptr)
+{
+  // spill
+  stack u64 state_ptr_s;
+
+  stack u64[25] state_s;
+  reg ptr u64[25] state_p;
+  reg u64 i t;
+
+  state_ptr_s = state_ptr;
+  state_p = state_s;
+
+  // load from state_ptr to state
+  i = 0;
+  while(i < 25)
+  { t = (u64)[state_ptr + 8*i];
+    state_p[(int) i] = t;
+    i += 1;
+  }
+
+  // call keccakf1600
+  state_p = _keccakf1600(state_p);
+
+  // store the state
+  state_ptr = state_ptr_s;
+
+  i = 0;
+  while(i < 25)
+  { t = state_p[(int) i];
+    (u64)[state_ptr + 8*i] = t;
+    i += 1;
+  }
+}
+

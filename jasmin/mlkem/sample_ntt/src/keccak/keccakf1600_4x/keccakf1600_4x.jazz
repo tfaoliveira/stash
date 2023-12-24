@@ -1,0 +1,2 @@
+from Keccak require "keccakf1600_4x/keccakf1600_4x.jinc"
+from Keccak require "keccakf1600_4x/keccakf1600_4x.export_template"

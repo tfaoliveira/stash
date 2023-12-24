@@ -1,0 +1,51 @@
+
+// notes: context: kyber 768
+//   param int KYBER_SYMBYTES = 32;
+//   param int KYBER_N = 256;
+//   param int KYBER_K = 3;
+//   param int KYBER_VECN =  KYBER_K * KYBER_N;
+
+// input pointers:
+//   seed_ptr: 32 bytes
+//   matrix_ptr: u16[KYBER_K*KYBER_VECN] ; u16[3*3*256 = 2304]; 4608 bytes
+
+require "gen_matrix.jinc"
+
+export fn gen_matrix(reg u64 matrix_ptr, reg u64 seed_ptr, reg u64 transposed)
+{
+  stack u64 matrix_ptr_s;
+
+  stack u8[KYBER_SYMBYTES] seed;
+  stack u16[KYBER_K*KYBER_VECN] matrix;
+  reg u64 i;
+  reg u8 v8;
+  reg u16 v16;
+
+  // store matrix_ptr in the stack (to free this register for the __gen_matrix function
+  matrix_ptr_s = matrix_ptr;
+
+  // load from seed_ptr to seed
+  i = 0;
+  while(i < KYBER_SYMBYTES)
+  { v8 = (u8)[seed_ptr + i];
+    seed[(int) i] = v8;
+    i += 1;
+  }
+
+  // call __gen_matrix from gen_matrix.jinc
+  if(transposed == 0)
+  { matrix = __gen_matrix(seed, 0); }
+  else
+  { matrix = __gen_matrix(seed, 1); }
+
+  // copy the matrix to the "outside world"
+  matrix_ptr = matrix_ptr_s;
+  i = 0;
+  while(i < KYBER_K*KYBER_VECN)
+  { v16 = matrix[(int) i];
+    (u16)[matrix_ptr + i*2] = v16;
+    i += 1;
+  }
+}
+
+

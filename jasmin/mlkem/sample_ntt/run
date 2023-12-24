@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+#set -x
+
+outfile=table1.md.temp
+echo "| Implementation dir| Impl. name | as -o size in bytes | stack size | median cycles | mean | sd | trimmed mean | checksum |" > $outfile
+echo "|-------------------|------------|---------------------|------------|---------------|------|----|--------------|----------" >> $outfile
+
+for implementation in \
+ src/gen_matrix/hakyber_ref/gen_matrix.s \
+ src/gen_matrix/hakyber_avx2/gen_matrix.s \
+ src/gen_matrix/ref/gen_matrix.s \
+ src/gen_matrix/ref_sct0/gen_matrix.s \
+ src/gen_matrix/ref_sct1/gen_matrix.s \
+ src/gen_matrix/ref_opt1/gen_matrix.s \
+ src/gen_matrix/ref_opt1_sct0/gen_matrix.s \
+ src/gen_matrix/ref_opt1_sct1/gen_matrix.s \
+ src/gen_matrix/avx2/gen_matrix.s \
+ src/gen_matrix/avx2_opt1/gen_matrix.s \
+ src/gen_matrix/avx2_opt2/gen_matrix.s \
+\
+ src/keccak/keccakf1600/keccakf1600_hakyber.s \
+ src/keccak/keccakf1600/keccakf1600_nobmi1.s \
+ src/keccak/keccakf1600/keccakf1600_nobmi1_compact.s \
+ src/keccak/keccakf1600/keccakf1600_bmi1_compact.s \
+ src/keccak/keccakf1600/keccakf1600_bmi1.s \
+\
+ src/keccak/keccakf1600_4x/keccakf1600_4x_hakyber.s \
+ src/keccak/keccakf1600_4x/keccakf1600_4x.s \
+ src/keccak/keccakf1600_4x/keccakf1600_4x_compact.s
+do
+
+target_dirname=$(dirname $implementation)
+target_basename=$(basename $implementation)
+target_basename=${target_basename/.s/}
+
+# get sizes
+make -C $target_dirname
+obj=${implementation/.s/.o}
+as -o $obj $implementation
+obj_size=$(stat --printf="%s" $obj)
+stack=${implementation/.s/.stack}
+make -C $target_dirname ${target_basename}.stack
+stack_size=$(cat $stack | grep -A4 -E "^Stack alloc:$" | grep -o -E "max size = [0-9]*" | cut -d'=' -f2 | sed -e 's/ //')
+
+# get cycles
+make -C bench/ ${target_dirname/src/bin}/${target_basename}.csv
+bench=$(tail -n1 bench/${target_dirname/src/bin}/${target_basename}.csv | sed -e 's/,/|/g')
+
+# get checksums (should match)
+make -C test/ ${target_dirname/src/bin}/${target_basename}.out
+checksum=$(cat test/${target_dirname/src/bin}/${target_basename}.out)
+checksum=${checksum:0:16}
+
+echo "| $target_dirname | $target_basename | $obj_size | $stack_size | $bench | $checksum |" >> $outfile
+
+done
+
+cat $outfile | column -s'|' -o'|' -t > ${outfile/.temp/}
+rm $outfile
+
+
+
