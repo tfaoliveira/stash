@@ -1,0 +1,233 @@
+from Stdlib require "comparisons.jinc"
+from Stdlib require "swaps.jinc"
+from Keccak require "keccakf1600/keccakf1600_bmi1_compact.jinc"
+
+require "params.jinc"
+require "gen_matrix_ref_spills.jinc"
+
+
+// xof related code
+
+inline fn xof_init(
+  reg ptr u64[25] state,
+  reg const ptr u8[32] rho,
+  reg u16 index)
+  ->
+  reg ptr u64[25]
+{
+  inline int i;
+  reg u64 t;
+
+  // copy rho sto state
+  for i=0 to 4
+  { t = rho[u64 i];
+    state[i] = t; }
+
+  // init to zero
+  t = 0;
+  for i=4 to 25
+  { state[i] = t; }
+
+  // complete the state initialization
+  state[u16 16]  = index;
+  state[u8 34]  ^= 0x1F;
+  state[u8 167] ^= 0x80;
+
+  return state; 
+}
+
+inline fn xof_next_bytes(
+  reg ptr u64[25] state)
+  ->
+  reg ptr u64[21],
+  reg ptr u64[25]
+{
+  reg ptr u64[21] b168;
+  state = _keccakf1600(state);
+  b168 = state[0:21];
+  return b168, state;
+}
+
+
+// 'sample' implementation from crypto-specs/ml-kem/Sampling.ec
+
+inline fn gen_matrix_sample_get_two_words(
+  reg ptr u64[21] b168,
+  reg u64 b168_offset)
+  ->
+  reg u16,
+  reg u16,
+  reg u64
+{
+  reg u16 bi bi1 bi2 d1 d2;
+
+  bi  = (16u) b168[u8 (int)b168_offset];
+  bi1 = (16u) b168[u8 (int)b168_offset + 1];
+  bi2 = (16u) b168[u8 (int)b168_offset + 2];
+  b168_offset += 3;
+
+  // d1 <- to_uint bi + 256 * (to_uint bi1 %% 16);
+  d1 = bi1; d1 &= 15; d1 <<= 8; d1 |= bi;
+
+  //d2 <- to_uint bi1 %/ 16 + 16  *  to_uint bi2;
+  d2 = bi1 >> 4; bi2 <<= 4; d2 |= bi2;
+
+  // note that 'd2 = bi1 >> 4;' is just a variable renaming (d2 and bi1 are
+  // merged during compilation)
+
+  return d1, d2, b168_offset;
+}
+
+fn gen_matrix_sample_iterate_generic(
+  reg u64 counter,
+  reg ptr u64[21] b168,
+  reg u64 b168_offset,
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix,
+  reg u64 matrix_offset)
+  ->
+  reg u64,
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N],
+  reg u64
+{
+  reg u16 d1 d2;
+  reg bool condition_loop;
+
+  while { condition_loop = comp_u64_l_int_and_u64_l_int(counter, KYBER_N, b168_offset, 168); } 
+        (condition_loop)
+  {
+    d1, d2, b168_offset = gen_matrix_sample_get_two_words(b168, b168_offset);
+
+    // if (d1 < q)
+    if (d1 < KYBER_Q)
+    { matrix[(int) matrix_offset] = d1;
+      matrix_offset += 1;
+      counter += 1;
+    }
+
+    // if ((d2 < q) && (counter < 256))
+    if(d2 < KYBER_Q)
+    { if(counter < KYBER_N)
+      { matrix[(int) matrix_offset] = d2;
+        matrix_offset += 1;
+        counter += 1;
+      }
+    }
+  }
+  return counter, matrix, matrix_offset;
+}
+
+fn gen_matrix_sample(
+  reg u64 counter,
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix,
+  reg u64 matrix_offset,
+  reg mut ptr u64[25] xof_state)
+  ->
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N],
+  reg u64,
+  reg ptr u64[25]
+{
+  // spills
+  #mmx reg u64 counter_s;
+  #mmx reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix_s;
+  #mmx reg u64 matrix_offset_s;
+
+  // local variables
+  reg ptr u64[21] b168;
+  reg u64 b168_offset;
+
+  while(counter < KYBER_N)
+  {
+    counter_s, matrix_s, matrix_offset_s = spill_gen_matrix_sample(counter, matrix, matrix_offset);
+
+    b168, xof_state = xof_next_bytes(xof_state);
+
+    counter, matrix, matrix_offset = unspill_gen_matrix_sample(counter_s, matrix_s, matrix_offset_s);
+
+    b168_offset = 0;
+    counter, matrix, matrix_offset = gen_matrix_sample_iterate_generic(counter, b168, b168_offset, matrix, matrix_offset);
+  }
+
+  return matrix, matrix_offset, xof_state;
+}
+
+inline fn gen_matrix_get_index(reg u64 i j t) -> reg u16
+{
+  reg u16 index;
+
+  i, j = swap_u64_u64_u64(i, j, t);
+  index   = (16u) i;
+  index <<= 8;
+  index  |= (16u) j;
+  
+  return index;
+}
+
+
+// code from InnerPKE.ec
+
+fn gen_matrix_sample_one_polynomial(
+  reg u64 i,
+  reg u64 j,
+  reg u64 transposed,
+  reg ptr u8[32] rho,
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix,
+  reg u64 matrix_offset)
+  ->
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N],
+  reg u64
+{
+  // local variables
+  stack u64[25] _xof_state;
+  reg ptr u64[25] xof_state;
+  reg u16 index;
+  reg u64 counter;
+
+  xof_state = _xof_state;
+
+  index = gen_matrix_get_index(i, j, transposed);
+
+  // XOF.init(rho, j, i);
+  xof_state = xof_init(xof_state, rho, index);
+
+  // c <@ Parse(XOF).sample(); a.[(i,j)] <- c;
+  counter = 0;
+  matrix, matrix_offset, _ = gen_matrix_sample(counter, matrix, matrix_offset, xof_state);
+
+  return matrix, matrix_offset;      
+}
+
+// assumes rho with 32 bytes
+fn _gen_matrix(
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix,
+  reg ptr u8[32] rho,
+  reg u64 transposed)
+  ->
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N]
+{
+  // spills
+  #mmx reg u64 i_s j_s transposed_s;
+  #mmx reg ptr u8[KYBER_SYMBYTES] rho_s;
+
+  // local variables
+  reg u64 i j matrix_offset;
+
+  matrix_offset = 0;
+  i = 0;
+  while (i < KYBER_K)
+  { j = 0;
+    while (j < KYBER_K)
+    {
+      i_s, j_s, transposed_s, rho_s = spill_gen_matrix(i, j, transposed, rho);
+
+      matrix, matrix_offset = gen_matrix_sample_one_polynomial(i, j, transposed, rho, matrix, matrix_offset);
+
+      i, j, transposed, rho = unspill_gen_matrix(i_s, j_s, transposed_s, rho_s);
+
+      j += 1;
+    }
+    i += 1;
+  }  
+
+  return matrix;
+}
+
