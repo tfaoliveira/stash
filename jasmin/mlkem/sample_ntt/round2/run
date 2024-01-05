@@ -11,6 +11,7 @@ for implementation in \
  src/gen_matrix/hakyber_ref/gen_matrix.s \
  src/gen_matrix/ref/gen_matrix.s \
 \
+ src/gen_matrix/pqcrystals_avx2/gen_matrix.s \
  src/gen_matrix/hakyber_avx2/gen_matrix.s \
  src/gen_matrix/avx2/gen_matrix.s \
 \
@@ -18,6 +19,7 @@ for implementation in \
  src/keccak/keccakf1600/keccakf1600_nobmi1_compact.s \
  src/keccak/keccakf1600/keccakf1600_bmi1_compact.s \
 \
+ src/keccak/keccakf1600_4x/xkcp/keccakf1600_4x_xkcp.s \
  src/keccak/keccakf1600_4x/keccakf1600_4x_hakyber.s \
  src/keccak/keccakf1600_4x/keccakf1600_4x_compact.s
 do

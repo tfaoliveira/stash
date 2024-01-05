@@ -14,7 +14,7 @@
 #endif
 
 #ifndef TIMINGS
-#define TIMINGS 10001
+#define TIMINGS 100001
 #endif
 
 extern void keccakf1600(uint8_t state_ptr[25*8]);

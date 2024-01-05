@@ -2,7 +2,7 @@
 
 JAZ := $(shell find ../src -name '*.jazz')
 DIR := $(dir $(JAZ))
-ASM  = $(subst .jazz,.s, $(JAZ)) ../src/gen_matrix/pqcrystals_ref/gen_matrix.s
+ASM  = $(subst .jazz,.s, $(JAZ)) ../src/gen_matrix/pqcrystals_ref/gen_matrix.s ../src/keccak/keccakf1600_4x/xkcp/keccakf1600_4x_xkcp.s ../src/gen_matrix/pqcrystals_avx2/gen_matrix.s
 EXC := $(subst ../src/,bin/, $(subst .s,, $(ASM)))
 OUT := $(addsuffix .out, $(EXC))
 
@@ -29,6 +29,7 @@ bin/keccak/keccakf1600/%: ../src/keccak/keccakf1600/%.s | __phony
 bin/keccak/keccakf1600_4x/%: ../src/keccak/keccakf1600_4x/%.s | __phony
 	mkdir -p $(@D)
 	gcc -Wall -Wno-unused-function -Werror -O3 -o $@ keccakf1600_4x.c $< -lgsl -lm
+
 
 $(OUT): | bin/
 bin/%.out: bin/%

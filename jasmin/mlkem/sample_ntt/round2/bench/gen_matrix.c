@@ -14,7 +14,7 @@
 #endif
 
 #ifndef TIMINGS
-#define TIMINGS 10001
+#define TIMINGS 50001
 #endif
 
 extern void gen_matrix(uint16_t matrix_ptr[2304], uint8_t seed_ptr[32], uint64_t transposed);

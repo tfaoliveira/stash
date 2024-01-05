@@ -2,7 +2,7 @@
 
 JAZ := $(shell find ../src -name '*.jazz')
 DIR := $(dir $(JAZ))
-ASM  = $(subst .jazz,.s, $(JAZ)) ../src/gen_matrix/pqcrystals_ref/gen_matrix.s
+ASM  = $(subst .jazz,.s, $(JAZ)) ../src/gen_matrix/pqcrystals_ref/gen_matrix.s ../src/keccak/keccakf1600_4x/xkcp/keccakf1600_4x_xkcp.s ../src/gen_matrix/pqcrystals_avx2/gen_matrix.s
 EXC := $(subst ../src/,bin/, $(subst .s,, $(ASM)))
 CSV := $(addsuffix .csv, $(EXC))
 
