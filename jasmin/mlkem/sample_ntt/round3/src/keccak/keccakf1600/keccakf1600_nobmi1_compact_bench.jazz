@@ -1,0 +1,2 @@
+from Keccak require "keccakf1600/keccakf1600_nobmi1_compact.jinc"
+from Keccak require "keccakf1600/keccakf1600.export_template_bench"

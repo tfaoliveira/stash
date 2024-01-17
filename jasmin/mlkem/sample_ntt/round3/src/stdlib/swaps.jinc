@@ -1,0 +1,21 @@
+
+inline fn swap_u64_u64_u64(
+  reg u64 a,
+  reg u64 b,
+  reg u64 c)
+  ->
+  reg u64,
+  reg u64
+{
+  reg u64 ra rb;
+  reg bool cond;
+
+  ra = a;
+  rb = b;
+  ?{ "==" = cond } = #CMP_64(c, 1);
+  ra = b if(cond);
+  rb = a if(cond);
+
+  return ra, rb;
+}
+

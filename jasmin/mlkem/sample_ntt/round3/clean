@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+#set -x
+
+for f in s o stack ext; do find . -name "*.$f" -exec rm {} \;; done
+make -C test/ distclean
+make -C bench/ distclean
+

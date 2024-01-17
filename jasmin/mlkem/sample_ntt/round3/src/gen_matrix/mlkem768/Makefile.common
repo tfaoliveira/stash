@@ -1,0 +1,56 @@
+.PHONY: __phony clean
+
+JASMIN ?= jasminc
+XED ?= xed
+
+JAZ := $(shell find . -name '*.jazz')
+ASM  = $(subst .jazz,.s, $(JAZ))
+OBJ  = $(subst .jazz,.o, $(JAZ))
+STK  = $(subst .jazz,.stack, $(JAZ))
+EXT  = $(subst .jazz,.ext, $(JAZ))
+
+all: assembly object stack extensions
+
+assembly: $(ASM)
+object: $(OBJ)
+stack: $(STK)
+extensions: $(EXT)
+
+$(ASM):
+gen_matri%.s: __phony
+	$(JASMIN) -I Keccak:../../../keccak/ -I Stdlib:../../../stdlib/ -o $@ gen_matri$*.jazz
+
+$(OBJ):
+gen_matri%.o: gen_matri%.s
+	as $< -o $@
+
+$(STK):
+gen_matri%.stack: __phony
+	$(JASMIN) -print-stack-alloc  -I Keccak:../../../keccak/ -I Stdlib:../../../stdlib/ gen_matri$*.jazz > $@ 2>&1
+
+$(EXT):
+gen_matri%.ext: gen_matri%.o
+	$(XED) -xml -i $< | grep "<EXTENSION>" | sed -e 's/ *<EXTENSION>//' -e 's/<\/EXTENSION>//' | sort -u | tr '\n' ',' | sed -e 's/,$$/\n/' > $@
+
+clean:
+	rm -f *.s *.o *.stack *.ext
+
+#-------------------------------------------------------------------------------
+
+debug:
+	@echo "JAZ:"
+	@echo $(JAZ)
+	@echo ""
+	@echo "ASM:"
+	@echo $(ASM)
+	@echo ""
+	@echo "OBJ:"
+	@echo $(OBJ)
+	@echo ""
+	@echo "STK:"
+	@echo $(STK)
+	@echo ""
+	@echo "EXT:"
+	@echo $(EXT)
+	@echo ""
+

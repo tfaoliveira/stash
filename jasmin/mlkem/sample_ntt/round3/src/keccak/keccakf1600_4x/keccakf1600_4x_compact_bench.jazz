@@ -1,0 +1,54 @@
+from Keccak require "keccakf1600_4x/keccakf1600_4x_compact.jinc"
+
+from Stdlib require "cycles.jinc"
+
+export fn keccakf1600_4x(reg u64 state_ptr) -> reg u64
+{
+  // spill
+  stack u64 state_ptr_s;
+
+  stack u256[25] state_s;
+  reg ptr u256[25] state_p;
+  reg u256 t;
+  reg u64 i j;
+
+  stack u32[2] start end;
+  reg u64 cycles;
+
+  state_ptr_s = state_ptr;
+  state_p = state_s;
+
+  // load from state_ptr to state
+  i = 0;
+  j = 0;
+  while(i < 25)
+  { t = (u256)[state_ptr + j];
+    state_p.[(int) j] = t;
+    i += 1;
+    j += 32;
+  }
+
+  start = rdtsc();
+
+  // call keccakf1600
+  state_p = _keccakf1600_4x(state_p);
+
+  end = rdtsc();
+
+  // store the state
+  state_ptr = state_ptr_s;
+
+  i = 0;
+  j = 0;
+  while(i < 25)
+  { t = state_p.[(int) j];
+    (u256)[state_ptr + j] = t;
+    i += 1;
+    j += 32;
+  }
+
+  cycles = cycles(start, end);
+  return cycles;
+}
+
+

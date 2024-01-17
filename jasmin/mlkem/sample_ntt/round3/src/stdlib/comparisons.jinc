@@ -1,0 +1,30 @@
+
+// taken and adapted from github.com/tfaoliveira/sphincsplus-jasmin
+
+// a < b && c < d
+inline fn comp_u64_l_int_and_u64_l_int(
+  reg u64 a,
+  inline int b,
+  reg u64 c,
+  inline int d) 
+  ->
+  reg bool
+{
+  reg bool c1 c2 c3;
+  reg u8 bc1 bc2;
+
+  ?{ "<u" = c1 } = #CMP_64(a, b);
+  // if(c1) <=> if(a <u b)
+  bc1 = #SETcc(c1);
+
+  ?{ "<u" = c2 } = #CMP_64(c, d);
+  // if(c2) <=> if(a <u c)
+  bc2 = #SETcc(c2);
+
+  // zf == 1 => bc1 & bc2 == 0 => cond = false
+  // zf == 0 => bc1 & bc2 == 1 => cond = true
+  ?{ "!=" = c3 } = #TEST_8(bc1, bc2); 
+
+  return c3;
+}
+
