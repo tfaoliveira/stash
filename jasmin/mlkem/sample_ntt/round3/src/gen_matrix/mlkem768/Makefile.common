@@ -39,7 +39,7 @@ gen_matri%.sct: __phony
 	$(JASMIN) -checkSCT  -I Keccak:../../../keccak/ -I Stdlib:../../../stdlib/ gen_matri$*.jazz > $@ 2>&1
 
 clean:
-	rm -f *.s *.o *.stack *.ext
+	rm -f *.s *.o *.stack *.ext *.sct
 
 #-------------------------------------------------------------------------------
 

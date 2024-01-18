@@ -1,3 +1,6 @@
 *.o
 *.s
+*.ext
+*.stack
+*.sct
 bin/
