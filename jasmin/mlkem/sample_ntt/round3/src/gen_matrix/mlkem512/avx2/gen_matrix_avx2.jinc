@@ -3,6 +3,8 @@ from Stdlib require "swaps.jinc"
 from Keccak require "keccakf1600_4x/keccakf1600_4x_compact.jinc"
 
 require "../ref/gen_matrix_ref.jinc"
+
+require "gen_matrix_avx2_spills.jinc"
 require "gen_matrix_avx2_globals.jinc"
 
 // xof related code
@@ -508,6 +510,11 @@ fn _gen_matrix_avx2(
   ->
   reg ptr u16[KYBER_K * KYBER_K * KYBER_N]
 {
+  // spills
+  #mmx reg u64 b_s transposed_s;
+  #mmx reg ptr u8[KYBER_SYMBYTES] rho_s;
+
+  // local variables
   reg u64 matrix_offset;
   reg u64 b;
 
@@ -516,11 +523,11 @@ fn _gen_matrix_avx2(
 
   while(b < 1)
   {
-      () = #spill(b, transposed, rho);
+    b_s, transposed_s, rho_s = spill_gen_matrix_1_avx2(b, transposed, rho);
 
     matrix, matrix_offset = gen_matrix_sample_four_polynomials(b, transposed, rho, matrix, matrix_offset);
 
-      () = #unspill(b, transposed, rho);
+    b, transposed, rho = unspill_gen_matrix_1_avx2(b_s, transposed_s, rho_s);
 
     b += 1;
   }

@@ -5,6 +5,8 @@
 
 from Stdlib require "comparisons.jinc"
 from Stdlib require "swaps.jinc"
+require "gen_matrix_ref_spills.jinc"
+
 
 // xof related code
 
@@ -126,16 +128,22 @@ fn gen_matrix_sample(
   reg u64,
   reg ptr u64[25]
 {
+  // spills
+  #mmx reg u64 counter_s;
+  #mmx reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix_s;
+  #mmx reg u64 matrix_offset_s;
+
+  // local variables
   reg ptr u64[21] b168;
   reg u64 b168_offset;
 
   while(counter < KYBER_N)
   {
-      () = #spill(counter, matrix, matrix_offset);
+    counter_s, matrix_s, matrix_offset_s = spill_gen_matrix_sample(counter, matrix, matrix_offset);
 
     b168, xof_state = xof_next_bytes(xof_state);
 
-      () = #unspill(counter, matrix, matrix_offset);
+    counter, matrix, matrix_offset = unspill_gen_matrix_sample(counter_s, matrix_s, matrix_offset_s);
 
     b168_offset = 0;
     counter, matrix, matrix_offset = gen_matrix_sample_iterate_generic(counter, b168, b168_offset, matrix, matrix_offset);
@@ -198,6 +206,11 @@ fn _gen_matrix(
   ->
   reg ptr u16[KYBER_K * KYBER_K * KYBER_N]
 {
+  // spills
+  #mmx reg u64 i_s j_s transposed_s;
+  #mmx reg ptr u8[KYBER_SYMBYTES] rho_s;
+
+  // local variables
   reg u64 i j matrix_offset;
 
   matrix_offset = 0;
@@ -206,11 +219,11 @@ fn _gen_matrix(
   { j = 0;
     while (j < KYBER_K)
     {
-        () = #spill(i, j, transposed, rho);
+      i_s, j_s, transposed_s, rho_s = spill_gen_matrix(i, j, transposed, rho);
 
       matrix, matrix_offset = gen_matrix_sample_one_polynomial(i, j, transposed, rho, matrix, matrix_offset);
 
-        () = #unspill(i, j, transposed, rho);
+      i, j, transposed, rho = unspill_gen_matrix(i_s, j_s, transposed_s, rho_s);
 
       j += 1;
     }

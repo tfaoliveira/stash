@@ -1,0 +1,93 @@
+// spills: sample
+
+inline fn spill_gen_matrix_sample(
+  reg u64 counter,
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix,
+  reg u64 matrix_offset)
+  ->
+  #mmx reg u64,
+  #mmx reg ptr u16[KYBER_K * KYBER_K * KYBER_N],
+  #mmx reg u64
+{
+  #mmx reg u64 counter_s;
+  #mmx reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix_s;
+  #mmx reg u64 matrix_offset_s;
+
+  counter_s = counter;
+  matrix_s = matrix;
+  matrix_offset_s = matrix_offset;
+
+  return counter_s, matrix_s, matrix_offset_s;
+}
+
+inline fn unspill_gen_matrix_sample(
+  #mmx reg u64 counter_s,
+  #mmx reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix_s,
+  #mmx reg u64 matrix_offset_s)
+  ->
+  reg u64,
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N],
+  reg u64
+{
+  reg u64 counter;
+  reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix;
+  reg u64 matrix_offset;
+
+  counter = counter_s;
+  matrix = matrix_s;
+  matrix_offset = matrix_offset_s;
+
+  return counter, matrix, matrix_offset;
+}
+
+
+// spills: gen_matrix
+
+inline fn spill_gen_matrix(
+  reg u64 i,
+  reg u64 j,
+  reg u64 transpose,
+  reg ptr u8[32] rho)
+  ->
+  #mmx reg u64,
+  #mmx reg u64,
+  #mmx reg u64,
+  #mmx reg ptr u8[32]
+{
+  #mmx reg u64 i_s;
+  #mmx reg u64 j_s;
+  #mmx reg u64 transpose_s;
+  #mmx reg ptr u8[32] rho_s;
+
+  i_s = i;
+  j_s = j;
+  transpose_s = transpose;
+  rho_s = rho;
+
+  return i_s, j_s, transpose_s, rho_s;
+}
+
+inline fn unspill_gen_matrix(
+  #mmx reg u64 i_s,
+  #mmx reg u64 j_s,
+  #mmx reg u64 transpose_s,
+  #mmx reg ptr u8[32] rho_s)
+  ->
+  reg u64,
+  reg u64,
+  reg u64,
+  reg ptr u8[32]
+{
+  reg u64 i;
+  reg u64 j;
+  reg u64 transpose;
+  reg ptr u8[32] rho;
+
+  i = i_s;
+  j = j_s;
+  transpose = transpose_s;
+  rho = rho_s;
+
+  return i, j, transpose, rho;
+}
+
