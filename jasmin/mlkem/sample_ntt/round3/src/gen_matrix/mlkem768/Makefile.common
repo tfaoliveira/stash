@@ -8,6 +8,7 @@ ASM  = $(subst .jazz,.s, $(JAZ))
 OBJ  = $(subst .jazz,.o, $(JAZ))
 STK  = $(subst .jazz,.stack, $(JAZ))
 EXT  = $(subst .jazz,.ext, $(JAZ))
+SCT  = $(subst .jazz,.sct, $(filter-out %_bench.jazz,$(JAZ)))
 
 all: assembly object stack extensions
 
@@ -15,6 +16,7 @@ assembly: $(ASM)
 object: $(OBJ)
 stack: $(STK)
 extensions: $(EXT)
+sct: $(SCT)
 
 $(ASM):
 gen_matri%.s: __phony
@@ -31,6 +33,10 @@ gen_matri%.stack: __phony
 $(EXT):
 gen_matri%.ext: gen_matri%.o
 	$(XED) -xml -i $< | grep "<EXTENSION>" | sed -e 's/ *<EXTENSION>//' -e 's/<\/EXTENSION>//' | sort -u | tr '\n' ',' | sed -e 's/,$$/\n/' > $@
+
+$(SCT):
+gen_matri%.sct: __phony
+	$(JASMIN) -checkSCT  -I Keccak:../../../keccak/ -I Stdlib:../../../stdlib/ gen_matri$*.jazz > $@ 2>&1
 
 clean:
 	rm -f *.s *.o *.stack *.ext
@@ -52,5 +58,8 @@ debug:
 	@echo ""
 	@echo "EXT:"
 	@echo $(EXT)
+	@echo ""
+	@echo "SCT:"
+	@echo $(SCT)
 	@echo ""
 
