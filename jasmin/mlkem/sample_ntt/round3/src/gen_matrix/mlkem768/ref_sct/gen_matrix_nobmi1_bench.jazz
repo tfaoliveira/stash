@@ -1,0 +1,67 @@
+
+// used parameters:
+//   KYBER_SYMBYTES = 32;
+//   KYBER_N = 256;
+//   KYBER_K = 3;
+
+// input pointers:
+//   seed_ptr: u8[32]
+//   matrix_ptr: u16[3*3*256]
+
+from Keccak require "keccakf1600/keccakf1600_nobmi1_compact.jinc"
+require "params.jinc"
+require "gen_matrix_ref.jinc"
+
+from Stdlib require "cycles.jinc"
+
+export fn gen_matrix(reg u64 matrix_ptr, reg u64 seed_ptr, reg u64 transposed) -> reg u64
+{
+  stack u64 matrix_ptr_s;
+
+  stack u8[KYBER_SYMBYTES] seed;
+  reg ptr u8[KYBER_SYMBYTES] seed_p;
+
+  stack u16[KYBER_K*KYBER_K*KYBER_N] matrix;
+  reg ptr u16[KYBER_K*KYBER_K*KYBER_N] matrix_p;
+
+  reg u64 i;
+  reg u8 v8;
+  reg u16 v16;
+  stack u32[2] start end;
+  reg u64 cycles;
+
+  matrix_ptr_s = matrix_ptr;
+  transposed = transposed;
+
+  // load from seed_ptr to seed
+  i = 0;
+  while(i < KYBER_SYMBYTES)
+  { v8 = (u8)[seed_ptr + i];
+    seed[(int) i] = v8;
+    i += 1;
+  }
+
+  start = rdtsc();
+
+  // call __gen_matrix from gen_matrix_ref.jinc
+    matrix_p = matrix;
+    seed_p = seed;
+    transposed = transposed;
+  matrix = _gen_matrix(matrix_p, seed_p, transposed);
+
+  end = rdtsc();
+
+  // copy the matrix to the "outside world"
+  matrix_ptr = matrix_ptr_s;
+  i = 0;
+  while(i < KYBER_K*KYBER_K*KYBER_N)
+  { v16 = matrix[(int) i];
+    (u16)[matrix_ptr + i*2] = v16;
+    i += 1;
+  }
+
+
+  cycles = cycles(start, end);
+  return cycles;
+}
+
