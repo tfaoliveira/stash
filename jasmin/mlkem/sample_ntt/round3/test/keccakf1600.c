@@ -13,7 +13,61 @@
 #define KECCAKF1600_RANDOM_TESTS 100000
 #endif
 
+void print_u64_5x5(const uint64_t *ptr)
+{
+  size_t i;
+
+  if(ptr == NULL) { return; }
+
+  printf("{\n  ");
+  for(i=0; i<24; i++)
+  { printf("0x%016" PRIx64 ", ", ptr[i]);
+
+    if((i+1)%5 == 0)
+    { printf("\n  "); }
+
+    if((i+1)%25 == 0)
+    { printf("\n  "); }
+  }
+
+  printf("0x%016" PRIx64 "\n};\n", ptr[i]);
+  return;
+}
+
 extern void keccakf1600(uint8_t state_ptr[25*8]);
+
+void test_keccakf1600_00000()
+{
+  uint8_t *state_ptr;
+
+  state_ptr = aligned_alloc(16, sizeof(uint8_t) * 25 * 8);
+  assert(state_ptr != NULL);
+
+  memset(state_ptr, 0, sizeof(uint8_t) * 25 * 8);
+
+  keccakf1600(state_ptr);
+
+  print_u64_5x5((uint64_t*) state_ptr);
+
+  free(state_ptr);
+}
+
+void test_keccakf1600_01234()
+{
+  uint8_t *state_ptr;
+
+  state_ptr = aligned_alloc(16, sizeof(uint8_t) * 25 * 8);
+  assert(state_ptr != NULL);
+
+  for(uint64_t i=0; i<25; i++)
+  { ((uint64_t*)state_ptr)[i] = i; } 
+
+  keccakf1600(state_ptr);
+
+  print_u64_5x5((uint64_t*) state_ptr);
+
+  free(state_ptr);
+}
 
 void test_keccakf1600_checksum()
 {
@@ -42,6 +96,8 @@ void test_keccakf1600_checksum()
 
 int main(void)
 {
-  test_keccakf1600_checksum();
+  //test_keccakf1600_00000();
+  test_keccakf1600_01234();
+  //test_keccakf1600_checksum();
   return 0;
 }
