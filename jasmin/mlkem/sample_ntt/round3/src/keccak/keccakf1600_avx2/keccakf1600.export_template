@@ -1,0 +1,98 @@
+
+export fn keccakf1600(reg u64 state_ptr)
+{
+  // spill
+  stack u64 state_ptr_s;
+
+  stack u64[25] state_s;
+  reg u256[7] stavx2;
+  reg ptr u64[25] state_p;
+  reg u64 i t;
+
+  state_ptr_s = state_ptr;
+  state_p = state_s;
+
+  // load from state_ptr to state
+  i = 0;
+  while(i < 25)
+  { t = (u64)[state_ptr + 8*i];
+    state_p[(int) i] = t;
+    i += 1;
+  }
+
+  // call keccakf1600
+  stavx2 = __stavx2_pack(state_p);
+  stavx2 = _keccakf1600_avx2(stavx2);
+  state_p = __stavx2_unpack(state_p, stavx2);
+
+  // store the state
+  state_ptr = state_ptr_s;
+
+  i = 0;
+  while(i < 25)
+  { t = state_p[(int) i];
+    (u64)[state_ptr + 8*i] = t;
+    i += 1;
+  }
+}
+
+export fn pack(reg u64 state_ptr)
+{
+  inline int j;
+  // spill
+  stack u64 state_ptr_s;
+
+  stack u64[25] state_s;  
+  reg u256[7] stavx2;
+  reg ptr u64[25] state_p;
+  reg u64 i t;
+
+  state_ptr_s = state_ptr;
+  state_p = state_s;
+
+  // load from state_ptr to state
+  i = 0;
+  while(i < 25)
+  { t = (u64)[state_ptr + 8*i];
+    state_p[(int) i] = t;
+    i += 1;
+  }
+
+  stavx2 = __stavx2_pack(state_p);
+
+  // store the state
+  state_ptr = state_ptr_s;
+
+  for j = 0 to 7 {
+    (u256)[state_ptr + 32*j] = stavx2[j];
+  }
+}
+
+export fn unpack(reg u64 state_ptr)
+{
+  inline int j;
+  // spill
+
+  stack u64[25] state_s;  
+  reg u256[7] stavx2;
+  reg ptr u64[25] state_p;
+  reg u64 i t;
+
+  state_p = state_s;
+
+  // load from state_ptr to state
+  for j = 0 to 7 {
+    stavx2[j] = (u256)[state_ptr + 32*j];
+  }
+
+  state_p = __stavx2_unpack(state_p, stavx2);
+
+  i = 0;
+  while(i < 25)
+  { t = state_p[(int) i];
+    (u64)[state_ptr + 8*i] = t;
+    i += 1;
+  }
+
+}
+

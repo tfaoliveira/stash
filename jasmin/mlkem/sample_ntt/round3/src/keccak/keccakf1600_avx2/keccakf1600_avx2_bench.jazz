@@ -1,0 +1,2 @@
+from Keccak require "keccakf1600_avx2/keccakf1600_avx2.jinc"
+from Keccak require "keccakf1600_avx2/keccakf1600.export_template_bench"

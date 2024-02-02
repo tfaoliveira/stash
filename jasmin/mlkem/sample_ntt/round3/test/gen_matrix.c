@@ -103,8 +103,8 @@ void test_gen_matrix_checksum()
 
 int main(void)
 {
-  //test_gen_matrix_simple();
-/*  test_gen_matrix_seed1();*/
+//  test_gen_matrix_simple();
+//  test_gen_matrix_seed1();
   test_gen_matrix_checksum();
   return 0;
 }

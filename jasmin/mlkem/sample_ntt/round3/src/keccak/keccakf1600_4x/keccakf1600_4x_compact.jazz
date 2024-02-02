@@ -1,41 +1,159 @@
 from Keccak require "keccakf1600_4x/keccakf1600_4x_compact.jinc"
 
-export fn keccakf1600_4x(reg u64 state_ptr)
+inline fn st4x_eq4x(reg const ptr u256[25] st4x) -> reg u64 {
+ reg u64 i b x y;
+ b = 0;
+ i = 0;
+ while (i < 25) {
+   x = st4x[u64 4*i + 0];
+   y = st4x[u64 4*i + 1];
+   y ^= x;
+   b |= y;
+   y = st4x[u64 4*i + 2];
+   y ^= x;
+   b |= y;
+   y = st4x[u64 4*i + 3];
+   y ^= x;
+   b |= y;
+   i += 1;
+ }
+ return b;
+}
+
+inline fn state_eq(reg const ptr u64[25] st0 st1) -> reg u64 {
+ reg u64 i b x;
+ b = 0;
+ i = 0;
+ while (i < 25) {
+   x = st0[u64 i];
+   x ^= st1[u64 i];
+   b |= x;
+   i += 1;
+ }
+ return b;
+}
+
+export fn keccakf1600_4x(reg u64 state_ptr) -> reg u64
 {
-  // spill
-  stack u64 state_ptr_s;
+  stack u64[25] state0_s;
+  reg ptr u64[25] state0_p;
+  stack u64[25] state1_s;
+  reg ptr u64[25] state1_p;
+  stack u64[25] state2_s;
+  reg ptr u64[25] state2_p;
+  stack u64[25] state3_s;
+  reg ptr u64[25] state3_p;
 
-  stack u256[25] state_s;
-  reg ptr u256[25] state_p;
-  reg u256 t;
-  reg u64 i j;
+  stack u256[25] st4x_s;
+  reg ptr u256[25] st4x_p;
 
-  state_ptr_s = state_ptr;
-  state_p = state_s;
+  reg u64 i t b;
+
+  state0_p = state0_s;
+  state1_p = state1_s;
+  state2_p = state2_s;
+  state3_p = state3_s;
+  st4x_p = st4x_s;
+
+  b = 0;
+
+  i = 0;
+  while(i < 25)
+  { t = (u64)[state_ptr + 8*i];
+    state0_p[i] = t;
+    i += 1;
+  }
+
+  st4x_p = __st4x_pack(st4x_p, state0_p, state0_p, state0_p, state0_p);
+  st4x_p = _keccakf1600_4x(st4x_p);
+  state0_p, state1_p, state2_p, state3_p
+    = __st4x_unpack(state0_p, state1_p, state2_p, state3_p, st4x_p);
+
+  t = state_eq(state0_p, state1_p);
+  b |= t;
+  t = state_eq(state0_p, state2_p);
+  b |= t;
+  t = state_eq(state0_p, state3_p);
+  b |= t;
+
+  i = 0;
+  while(i < 25)
+  { t = state0_p[(int) i];
+    [state_ptr + 8*i] = t;
+    i += 1;
+  }
+  return b;
+}
+
+
+export fn pack_4x(reg u64 state_ptr)
+{
+  stack u64[25] st0_s st1_s st2_s st3_s;
+  reg ptr u64[25] st0 st1 st2 st3;
+  stack u256[25] st4x_s;
+  reg ptr u256[25] st4x;
+
+  reg u64 i t;
+
+  st0 = st0_s; st1 = st1_s; st2 = st2_s; st3 = st3_s;
+  st4x = st4x_s;
 
   // load from state_ptr to state
   i = 0;
-  j = 0;
   while(i < 25)
-  { t = (u256)[state_ptr + j];
-    state_p.[(int) j] = t;
+  { t = (u64)[state_ptr + 8*i + 25*8*0];
+    st0[i] = t;
+    t = (u64)[state_ptr + 8*i + 25*8*1];
+    st1[i] = t;
+    t = (u64)[state_ptr + 8*i + 25*8*2];
+    st2[i] = t;
+    t = (u64)[state_ptr + 8*i + 25*8*3];
+    st3[i] = t;
     i += 1;
-    j += 32;
   }
 
-  // call keccakf1600
-  state_p = _keccakf1600_4x(state_p);
-
-  // store the state
-  state_ptr = state_ptr_s;
+  st4x = __st4x_pack(st4x, st0, st1, st2, st3);
 
   i = 0;
-  j = 0;
-  while(i < 25)
-  { t = state_p.[(int) j];
-    (u256)[state_ptr + j] = t;
+  while (i < 25*4) {
+    [state_ptr + 8*i] = st4x[u64 i];
     i += 1;
-    j += 32;
+  }
+}
+
+export fn unpack_4x(reg u64 state_ptr)
+{
+  stack u64[25] st0_s st1_s st2_s st3_s;
+  reg ptr u64[25] st0 st1 st2 st3;
+  stack u64[25*4] st4x_s;
+  reg ptr u64[25*4] st4x;
+
+  reg u64 i t;
+
+  st0 = st0_s; st1 = st1_s; st2 = st2_s; st3 = st3_s;
+  st4x = st4x_s;
+
+  i = 0;
+  while (i < 25*4) {
+    t = [state_ptr + 8*i];
+    st4x[u64 i] = t;
+    i += 1;
+  }
+
+  st0, st1, st2, st3 = __st4x_unpack(st0, st1, st2, st3, st4x);
+
+  // load from state_ptr to state
+  i = 0;
+  while(i < 25)
+  { t = st0[i];
+    (u64)[state_ptr + 8*i + 25*8*0] = t;
+    t = st1[i];
+    (u64)[state_ptr + 8*i + 25*8*1] = t;
+    t = st2[i];
+    (u64)[state_ptr + 8*i + 25*8*2] = t;
+    t = st3[i];
+    (u64)[state_ptr + 8*i + 25*8*3] = t;
+    i += 1;
   }
 }
 

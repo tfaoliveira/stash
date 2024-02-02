@@ -30,6 +30,7 @@ DIR := $(dir $(JAZ))
 ASM  = $(subst .jazz,.s, $(JAZ)) $(NJI)
 EXC := $(subst ../src/,bin/, $(subst .s,, $(ASM)))
 OUT := $(addsuffix .out, $(EXC))
+LDFLAGS = -framework Accelerate
 
 #-------------------------------------------------------------------------------
 
@@ -47,25 +48,29 @@ $(ASM):
 $(EXC):
 bin/gen_matrix/mlkem512/%: ../src/gen_matrix/mlkem512/%.s | __phony
 	mkdir -p $(@D)
-	gcc -Wall -Wno-unused-function -Werror -O3 -g -DGEN_MATRIX_SIZE=1024 -o $@ gen_matrix.c $< -lgsl -lm
+	gcc -Wall -Wno-unused-function -Werror $(LDFLAGS) -O3 -g -DGEN_MATRIX_SIZE=1024 -o $@ gen_matrix.c $< -lgsl -lm
 
 bin/gen_matrix/mlkem768/%: ../src/gen_matrix/mlkem768/%.s | __phony
 	mkdir -p $(@D)
-	gcc -Wall -Wno-unused-function -Werror -O3 -g -DGEN_MATRIX_SIZE=2304 -o $@ gen_matrix.c $< -lgsl -lm
+	gcc -Wall -Wno-unused-function -Werror $(LDFLAGS) -O3 -g -DGEN_MATRIX_SIZE=2304 -o $@ gen_matrix.c $< -lgsl -lm
 
 bin/gen_matrix/mlkem1024/%: ../src/gen_matrix/mlkem1024/%.s | __phony
 	mkdir -p $(@D)
-	gcc -Wall -Wno-unused-function -Werror -O3 -g -DGEN_MATRIX_SIZE=4096 -o $@ gen_matrix.c $< -lgsl -lm
+	gcc -Wall -Wno-unused-function -Werror $(LDFLAGS) -O3 -g -DGEN_MATRIX_SIZE=4096 -o $@ gen_matrix.c $< -lgsl -lm
 
 #-
 
 bin/keccak/keccakf1600/%: ../src/keccak/keccakf1600/%.s | __phony
 	mkdir -p $(@D)
-	gcc -Wall -Wno-unused-function -Werror -O3 -g -o $@ keccakf1600.c $< -lgsl -lm
+	gcc -Wall -Wno-unused-function -Werror $(LDFLAGS) -O3 -g -o $@ keccakf1600.c $< -lgsl -lm
+
+bin/keccak/keccakf1600_avx2/%: ../src/keccak/keccakf1600_avx2/%.s | __phony
+	mkdir -p $(@D)
+	gcc -Wall -Wno-unused-function -Werror $(LDFLAGS) -O3 -g -o $@ keccakf1600.c $< -lgsl -lm
 
 bin/keccak/keccakf1600_4x/%: ../src/keccak/keccakf1600_4x/%.s | __phony
 	mkdir -p $(@D)
-	gcc -Wall -Wno-unused-function -Werror -O3 -g -o $@ keccakf1600_4x.c $< -lgsl -lm
+	gcc -Wall -Wno-unused-function -Werror $(LDFLAGS) -O3 -g -o $@ keccakf1600_4x.c $< -lgsl -lm
 
 #-
 

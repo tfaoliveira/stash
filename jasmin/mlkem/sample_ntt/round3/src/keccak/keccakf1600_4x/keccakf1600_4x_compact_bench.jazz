@@ -10,7 +10,7 @@ export fn keccakf1600_4x(reg u64 state_ptr) -> reg u64
   stack u256[25] state_s;
   reg ptr u256[25] state_p;
   reg u256 t;
-  reg u64 i j;
+  reg u64 i r;
 
   stack u32[2] start end;
   reg u64 cycles;
@@ -20,12 +20,10 @@ export fn keccakf1600_4x(reg u64 state_ptr) -> reg u64
 
   // load from state_ptr to state
   i = 0;
-  j = 0;
   while(i < 25)
-  { t = (u256)[state_ptr + j];
-    state_p.[(int) j] = t;
+  { t = #VPBROADCAST_4u64([state_ptr + 8*i]);
+    state_p.[(int) i] = t;
     i += 1;
-    j += 32;
   }
 
   start = rdtsc();
@@ -39,16 +37,84 @@ export fn keccakf1600_4x(reg u64 state_ptr) -> reg u64
   state_ptr = state_ptr_s;
 
   i = 0;
-  j = 0;
   while(i < 25)
-  { t = state_p.[(int) j];
-    (u256)[state_ptr + j] = t;
+  { r = state_p.[u64 4*i];
+    [state_ptr + 8*i] = r;
     i += 1;
-    j += 32;
   }
 
   cycles = cycles(start, end);
   return cycles;
 }
 
+export fn pack_4x(reg u64 state_ptr)
+{
+  stack u64[25] st0_s st1_s st2_s st3_s;
+  reg ptr u64[25] st0 st1 st2 st3;
+  stack u256[25] st4x_s;
+  reg ptr u256[25] st4x;
+
+  reg u64 i t;
+
+  st0 = st0_s; st1 = st1_s; st2 = st2_s; st3 = st3_s;
+  st4x = st4x_s;
+
+  // load from state_ptr to state
+  i = 0;
+  while(i < 25)
+  { t = (u64)[state_ptr + 8*i + 25*8*0];
+    st0[i] = t;
+    t = (u64)[state_ptr + 8*i + 25*8*1];
+    st1[i] = t;
+    t = (u64)[state_ptr + 8*i + 25*8*2];
+    st2[i] = t;
+    t = (u64)[state_ptr + 8*i + 25*8*3];
+    st3[i] = t;
+    i += 1;
+  }
+
+  st4x = __st4x_pack(st4x, st0, st1, st2, st3);
+
+  i = 0;
+  while (i < 25*4) {
+    [state_ptr + 8*i] = st4x[u64 i];
+    i += 1;
+  }
+}
+
+export fn unpack_4x(reg u64 state_ptr)
+{
+  stack u64[25] st0_s st1_s st2_s st3_s;
+  reg ptr u64[25] st0 st1 st2 st3;
+  stack u64[25*4] st4x_s;
+  reg ptr u64[25*4] st4x;
+
+  reg u64 i t;
+
+  st0 = st0_s; st1 = st1_s; st2 = st2_s; st3 = st3_s;
+  st4x = st4x_s;
+
+  i = 0;
+  while (i < 25*4) {
+    t = [state_ptr + 8*i];
+    st4x[u64 i] = t;
+    i += 1;
+  }
+
+  st0, st1, st2, st3 = __st4x_unpack(st0, st1, st2, st3, st4x);
+
+  // load from state_ptr to state
+  i = 0;
+  while(i < 25)
+  { t = st0[i];
+    (u64)[state_ptr + 8*i + 25*8*0] = t;
+    t = st1[i];
+    (u64)[state_ptr + 8*i + 25*8*1] = t;
+    t = st2[i];
+    (u64)[state_ptr + 8*i + 25*8*2] = t;
+    t = st3[i];
+    (u64)[state_ptr + 8*i + 25*8*3] = t;
+    i += 1;
+  }
+}
 

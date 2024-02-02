@@ -1,0 +1,50 @@
+
+from Stdlib require "cycles.jinc"
+
+export fn keccakf1600(reg u64 state_ptr) -> reg u64
+{
+  // spill
+  stack u64 state_ptr_s;
+
+  stack u64[25] state_s;
+  reg u256[7] stavx2;
+  reg ptr u64[25] state_p;
+  reg u64 i t;
+
+  stack u32[2] start end;
+  reg u64 cycles;
+
+  state_ptr_s = state_ptr;
+  state_p = state_s;
+
+  // load from state_ptr to state
+  i = 0;
+  while(i < 25)
+  { t = (u64)[state_ptr + 8*i];
+    state_p[(int) i] = t;
+    i += 1;
+  }
+
+  start = rdtsc();
+
+  // call keccakf1600
+  stavx2 = __stavx2_pack(state_p);
+  stavx2 = _keccakf1600_avx2(stavx2);
+  state_p = __stavx2_unpack(state_p, stavx2);
+
+  end = rdtsc();
+
+  // store the state
+  state_ptr = state_ptr_s;
+
+  i = 0;
+  while(i < 25)
+  { t = state_p[(int) i];
+    (u64)[state_ptr + 8*i] = t;
+    i += 1;
+  }
+
+  cycles = cycles(start, end);
+  return cycles;
+}
+

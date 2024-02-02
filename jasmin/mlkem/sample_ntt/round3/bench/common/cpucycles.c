@@ -31,14 +31,14 @@ static inline int cpucycles_compare(const void *a, const void *b)
   return 0;
 }
 
-static inline void cpucycles_sort(uint64_t *data, size_t length)
+static inline void cpucycles_sort(unsigned long *data, size_t length)
 {
   qsort(data, length, sizeof(uint64_t), cpucycles_compare);
 }
 
 // 
 
-static uint64_t stats_median(uint64_t *data, size_t length)
+static uint64_t stats_median(unsigned long *data, size_t length)
 {
   uint64_t median;
   size_t base_index;
@@ -53,7 +53,7 @@ static uint64_t stats_median(uint64_t *data, size_t length)
   return median;
 }
 
-static double stats_mean(uint64_t *data, size_t length)
+static double stats_mean(unsigned long *data, size_t length)
 {
   double mean;
 
@@ -64,7 +64,7 @@ static double stats_mean(uint64_t *data, size_t length)
   return mean;
 }
 
-static double stats_sd(uint64_t *data, size_t length)
+static double stats_sd(unsigned long *data, size_t length)
 {
   double sd;
   sd = gsl_stats_ulong_sd(data, 1, length);
@@ -74,7 +74,7 @@ static double stats_sd(uint64_t *data, size_t length)
   return sd;
 }
 
-static double stats_trimmed_mean(uint64_t *data, size_t length, double cut_percentage)
+static double stats_trimmed_mean(unsigned long *data, size_t length, double cut_percentage)
 {
   double trimmed_mean;
   trimmed_mean = gsl_stats_ulong_trmean_from_sorted_data(cut_percentage, data, 1, length);

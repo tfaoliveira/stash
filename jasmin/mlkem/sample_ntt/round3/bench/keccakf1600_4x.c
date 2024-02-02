@@ -21,14 +21,15 @@ extern void keccakf1600_4x(uint8_t state_ptr[25*8*4]);
 
 void bench_keccakf1600_4x_setup1(void)
 {
-  uint64_t timings[TIMINGS];
+  unsigned long timings[TIMINGS];
   uint64_t start;
   uint64_t median;
   double mean, sd, tr_mean;
 
   uint8_t *state_ptr;
 
-  state_ptr = aligned_alloc(16, sizeof(uint8_t) * 25 * 8 * 4);
+//  state_ptr = aligned_alloc(16, sizeof(uint8_t) * 25 * 8 * 4);
+  posix_memalign((void**)&state_ptr, 16, sizeof(uint8_t) * 25 * 8 * 4);
   assert(state_ptr != NULL);
 
   for(size_t run=0; run<RUNS; run++)

@@ -25,7 +25,7 @@ extern uint64_t gen_matrix(uint16_t matrix_ptr[GEN_MATRIX_SIZE], uint8_t seed_pt
 
 void bench_gen_matrix_setup1(void)
 {
-  uint64_t timings[TIMINGS];
+  unsigned long timings[TIMINGS];
   uint64_t median;
   double mean, sd, tr_mean;
 
