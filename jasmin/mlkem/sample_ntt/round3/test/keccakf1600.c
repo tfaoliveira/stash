@@ -111,7 +111,37 @@ void test_keccakf1600_avx2_pack_unpack()
 
   free(state_ptr);
 }
+
+void test_keccakf1600_avx2_pack_unpack_random()
+{
+  uint64_t *state_ptr_original;
+  uint64_t *state_ptr_after_pack_unpack;
+
+  state_ptr_original = malloc(sizeof(uint8_t) * (25+3) * 8);
+  assert(state_ptr_original != NULL);
+
+  state_ptr_after_pack_unpack = malloc(sizeof(uint8_t) * (25+3) * 8);
+  assert(state_ptr_after_pack_unpack != NULL);
+
+  for(size_t t=0; t < 1000; t++)
+  {
+    randombytes((uint8_t*)state_ptr_original, sizeof(uint8_t) * (25+3) * 8);
+    memcpy(state_ptr_after_pack_unpack, state_ptr_original, sizeof(uint8_t) * (25+3) * 8);
+
+    pack(state_ptr_after_pack_unpack);
+    print_u64_5x5_p_3((uint64_t*) state_ptr_after_pack_unpack);
+
+    unpack(state_ptr_after_pack_unpack);
+    print_u64_5x5_p_3((uint64_t*) state_ptr_after_pack_unpack);
+
+    assert(memcmp(state_ptr_original, state_ptr_after_pack_unpack, sizeof(uint8_t) * 25 * 8) == 0);
+  }
+
+  free(state_ptr_original);
+  free(state_ptr_after_pack_unpack);
+}
 #endif
+
 
 void test_keccakf1600_00000()
 {
