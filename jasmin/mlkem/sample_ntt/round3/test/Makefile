@@ -1,5 +1,7 @@
 .PHONY: __phony clean distclean
 
+UNAME = $(shell uname)
+
 #-- non jasmin implementations
 NJI := \
  ../src/gen_matrix/mlkem512/pqcrystals_ref/gen_matrix_bmi1.s \
@@ -30,7 +32,10 @@ DIR := $(dir $(JAZ))
 ASM  = $(subst .jazz,.s, $(JAZ)) $(NJI)
 EXC := $(subst ../src/,bin/, $(subst .s,, $(ASM)))
 OUT := $(addsuffix .out, $(EXC))
-LDFLAGS = -framework Accelerate
+
+ifneq ($(UNAME),Linux)
+LDFLAGS ?= -framework Accelerate
+endif
 
 #-------------------------------------------------------------------------------
 
@@ -99,4 +104,9 @@ debug:
 	@echo "OUT:"
 	@echo $(OUT)
 	@echo ""
+	@echo "UNAME:"
+	@echo $(UNAME)
+	@echo ""
+	@echo "LDFLAGS:"
+	@echo $(LDFLAGS)
 
