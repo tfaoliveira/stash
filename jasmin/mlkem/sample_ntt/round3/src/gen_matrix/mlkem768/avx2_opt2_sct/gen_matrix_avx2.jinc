@@ -1,8 +1,8 @@
 from Stdlib require "comparisons.jinc"
 from Stdlib require "swaps.jinc"
 from Keccak require "keccakf1600_4x/keccakf1600_4x_compact.jinc"
-
 from Keccak require "keccakf1600_avx2/keccakf1600_avx2.jinc"
+
 require "params.jinc"
 require "gen_matrix_avx2_globals.jinc"
 
@@ -305,7 +305,7 @@ inline fn __gen_matrix_buf_rejection_filter48
 , reg u256 bounds
 , reg ptr u8[2048] sst
 , reg u256 ones
-//, #msf reg u64 ms
+, #msf reg u64 ms
 ) -> reg ptr u16[KYBER_N], reg u64
 {
   reg u256 f0 f1 g0 g1;
@@ -388,7 +388,7 @@ inline fn __gen_matrix_buf_rejection_filter48
   // from Intel intrinsics: "Create mask from the most significant bit of each 8-bit element in a, and store the result in dst."
   good = #VPMOVMSKB_u256u64(g0);
 
-//  good = #protect(good, ms);
+  good = #protect(good, ms);
 
   // at this point, the bit count of good contains the number of 'good' elements
 
@@ -455,29 +455,55 @@ inline fn __write_u128_boundchk
 ( reg mut ptr u16[KYBER_N] pol
 , reg u64 ctr
 , reg u128 data
-) -> reg ptr u16[KYBER_N], reg u64 {
+, #msf reg u64 ms
+) -> reg ptr u16[KYBER_N], reg u64, #msf reg u64
+{
   reg u64 data_u64;
-  if ( ctr <= KYBER_N-8 ) {
+  reg bool condition_8 condition_4 condition_2 condition_1;
+
+  condition_8 = (ctr <= KYBER_N-8);
+  if ( condition_8 ) {
+    ms = #update_msf(condition_8, ms);
+
     pol.[u128 2*(int)ctr] = data;
     ctr += 8;
-  } else {
+  } else
+  {
+    ms = #update_msf(!condition_8, ms);
+
     data_u64 = #MOVV(data);
-    if ( ctr <= KYBER_N-4 ) {
+
+    condition_4 = (ctr <= KYBER_N-4);
+    if ( condition_4 ) {
+      ms = #update_msf(condition_4, ms);
+
       pol.[u64 2*(int)ctr] = data_u64;
       data_u64 = #VPEXTR_64(data, 1);
       ctr += 4;
-    }
-    if ( ctr <= KYBER_N-2 ) {
+    } else
+    { ms = #update_msf(!condition_4, ms); }
+
+    condition_2 = (ctr <= KYBER_N-2);
+    if ( condition_2 ) {
+      ms = #update_msf(condition_2, ms);
+
       pol.[u32 2*(int)ctr] = (32u) data_u64;
       data_u64 >>= 32;
       ctr += 2;
-    }
-    if ( ctr <= KYBER_N-1 ) {
+    } else
+    { ms = #update_msf(!condition_2, ms); }
+
+    condition_1 = (ctr <= KYBER_N-1);
+    if ( condition_1 ) {
+      ms = #update_msf(condition_1, ms);
+
       pol.[u16 2*(int)ctr] = (16u) data_u64;
       ctr += 1;
-    }
+    } else
+    { ms = #update_msf(!condition_1, ms); }
   }
-  return pol, ctr;
+
+  return pol, ctr, ms;
 }
 
 inline fn __gen_matrix_buf_rejection_filter24
@@ -489,8 +515,8 @@ inline fn __gen_matrix_buf_rejection_filter24
 , reg u256 load_shuffle mask bounds
 , reg ptr u8[2048] sst
 , reg u256 ones
-//, #msf reg u64 ms
-) -> reg ptr u16[KYBER_N], reg u64
+, #msf reg u64 ms
+) -> reg ptr u16[KYBER_N], reg u64, #msf reg u64
 {
   reg u256 f0 g0 g1;
   reg u256 shuffle_0 shuffle_t;
@@ -507,7 +533,7 @@ inline fn __gen_matrix_buf_rejection_filter24
   g0 = #VPACKSS_16u16(g0, g1);
   good = #VPMOVMSKB_u256u64(g0);
 
-//  good = #protect(good, ms);
+  good = #protect(good, ms);
 
   // g0
   t0_0 = good;
@@ -531,14 +557,14 @@ inline fn __gen_matrix_buf_rejection_filter24
   //
 
   t128 = (128u) f0;
-  pol, counter = __write_u128_boundchk(pol, counter, t128);
+  pol, counter, ms = __write_u128_boundchk(pol, counter, t128, ms);
   
   t128 = #VEXTRACTI128(f0, 1);
-  pol, counter = __write_u128_boundchk(pol, t0_0, t128);
+  pol, counter, ms = __write_u128_boundchk(pol, t0_0, t128, ms);
 
   counter = t0_1;
   
-  return pol, counter;
+  return pol, counter, ms;
 }
 
 
@@ -553,6 +579,9 @@ fn _gen_matrix_buf_rejection
   reg bool condition_loop;
   reg ptr u8[2048] sst;
   reg u256 load_shuffle mask bounds ones;
+  #msf reg u64 ms;
+
+  ms = #init_msf();
 
   load_shuffle = sample_load_shuffle[u256 0];
   mask = sample_mask;
@@ -565,14 +594,20 @@ fn _gen_matrix_buf_rejection
   while { condition_loop = comp_u64_l_int_and_u64_l_int(buf_offset, 3*168-48+1, counter, KYBER_N-32+1); }
         ( condition_loop )
   {
-    pol, counter = __gen_matrix_buf_rejection_filter48(pol, counter, buf, buf_offset, load_shuffle, mask, bounds, sst, ones);
+    ms = #update_msf(condition_loop, ms);
+
+    pol, counter = __gen_matrix_buf_rejection_filter48(pol, counter, buf, buf_offset, load_shuffle, mask, bounds, sst, ones, ms);
     buf_offset += 48;
   }
+  ms = #update_msf(!condition_loop, ms);
 
   while { condition_loop = comp_u64_l_int_and_u64_l_int(buf_offset, 3*168-24+1, counter, KYBER_N+1); }
         ( condition_loop )
   {
-    pol, counter = __gen_matrix_buf_rejection_filter24(pol, counter, buf, buf_offset, load_shuffle, mask, bounds, sst, ones);
+    ms = #update_msf(condition_loop, ms);
+
+    pol, counter, ms = __gen_matrix_buf_rejection_filter24(pol, counter, buf, buf_offset, load_shuffle, mask, bounds, sst, ones, ms);
+
     buf_offset += 24;
   }
 
@@ -698,7 +733,7 @@ inline fn __gen_matrix_sample_one_polynomial
 fn _gen_matrix_avx2
 ( reg ptr u16[KYBER_K * KYBER_K * KYBER_N] matrix
 , reg ptr u8[32] rho
-, reg u64 transposed
+, #spill_to_mmx reg u64 transposed
 ) -> reg ptr u16[KYBER_K * KYBER_K * KYBER_N]
 {
   // local variables
@@ -711,12 +746,15 @@ fn _gen_matrix_avx2
   reg u64 mat_entry;
   reg u16 rc;
 
+    () = #spill(transposed);
+
   bufx4 = bufx4_s;
 
   for i = 0 to 2
   {
     mat_entry = 4*i;
     polx4 = matrix[4*i*KYBER_N:4*KYBER_N];
+    () = #unspill(transposed);
     polx4, bufx4 = _gen_matrix_sample_four_polynomials(polx4, bufx4, rho, mat_entry, transposed);
     matrix[i*4*KYBER_N:4*KYBER_N] = polx4;
   }

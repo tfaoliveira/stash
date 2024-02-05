@@ -36,10 +36,10 @@ gen_matri%.ext: gen_matri%.o
 
 $(SCT):
 gen_matri%.sct: __phony
-	$(JASMIN) -checkSCT  -I Keccak:../../../keccak/ -I Stdlib:../../../stdlib/ gen_matri$*.jazz > $@ 2>&1
+	$(JASMIN) -checkSCT  -I Keccak:../../../keccak/ -I Stdlib:../../../stdlib/ gen_matri$*.jazz > $@ 2>&1 || mv $@ $@.error
 
 clean:
-	rm -f *.s *.o *.stack *.ext *.sct
+	rm -f *.s *.o *.stack *.ext *.sct *.sct.error
 
 #-------------------------------------------------------------------------------
 
