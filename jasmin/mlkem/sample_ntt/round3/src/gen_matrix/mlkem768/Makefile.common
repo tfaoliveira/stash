@@ -10,7 +10,7 @@ STK  = $(subst .jazz,.stack, $(JAZ))
 EXT  = $(subst .jazz,.ext, $(JAZ))
 SCT  = $(subst .jazz,.sct, $(filter-out %_bench.jazz,$(JAZ)))
 
-all: assembly object stack extensions
+all: assembly object stack extensions sct
 
 assembly: $(ASM)
 object: $(OBJ)
