@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+#set -x
+
+outfile=table1.md.temp
+echo "| implementation dir| impl. name | cycles (median) | as -o size in bytes | stack size | sct | cpu extensions (from xed) | mean | sd | trimmed mean | checksum |" > $outfile
+echo "|-------------------|------------|-----------------|---------------------|------------|-----|---------------------------|------|----|--------------|----------|" >> $outfile
+
+for implementation in \
+ src/gen_matrix/mlkem768/pqcrystals_ref/gen_matrix_bmi1.s \
+ src/gen_matrix/mlkem768/ref_sct/gen_matrix_bmi1.s \
+\
+ src/gen_matrix/mlkem768/pqcrystals_avx2/gen_matrix_bmi1_table.s \
+ src/gen_matrix/mlkem768/avx2_opt1_sct/gen_matrix_bmi1.s \
+ src/gen_matrix/mlkem768/avx2_opt2_sct/gen_matrix_avx2.s
+do
+
+  target_dirname=$(dirname $implementation)
+  target_basename=$(basename $implementation)
+  target_basename=${target_basename/.s/}
+
+  make -C $target_dirname ${target_basename}.s ${target_basename}.o ${target_basename}.stack ${target_basename}.ext ${target_basename}.sct 
+
+  # get sizes
+
+  object_size=$(stat --printf="%s" ${target_dirname}/${target_basename}.o)
+  stack_size=$(cat ${target_dirname}/${target_basename}.stack | grep -A4 -E "^Stack alloc:$" | grep -o -E "max size = [0-9]*" | cut -d'=' -f2 | sed -e 's/ //')
+
+  # get cycles
+  make -C bench/ ${target_dirname/src/bin}/${target_basename}_bench.csv
+  cycles_info=$(tail -n1 bench/${target_dirname/src/bin}/${target_basename}_bench.csv | sed -e 's/,/|/g')
+  cycles_median=$(echo $cycles_info | cut -d'|' -f1)
+  cycles_info=$(echo $cycles_info | cut -d'|' -f2,3,4)
+
+  # get xed ext
+  ext_info=$(cat ${target_dirname}/${target_basename}.ext)
+
+  # if there is a file named ${target_basename}.sct then implementation is sct
+  # - otherwise (in case there is an error during sct typechecking) it is
+  #   expected that the corresponding *.sct file is moved to *.sct.error
+  sct="no";
+  if [ -f ${target_dirname}/${target_basename}.sct ]
+  then
+    sct="yes";
+  fi
+
+  # get checksums (should match)
+  make -C test/ ${target_dirname/src/bin}/${target_basename}.out
+
+  checksum=$(cat test/${target_dirname/src/bin}/${target_basename}.out)
+  checksum=${checksum:0:16}
+
+  echo "| $target_dirname | $target_basename | $cycles_median | $object_size | $stack_size | $sct | $ext_info | $cycles_info | $checksum |" >> $outfile
+done
+
+cat $outfile | column -s'|' -o'|' -t > ${outfile/.temp/}
+rm $outfile
+
+
+
