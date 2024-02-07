@@ -126,7 +126,38 @@ inline fn xof_next_bytes_x3_x4(
   return b168_x4, state;
 }
 
-inline fn xof_next_bytes_x3(
+
+inline fn xof_next_bytes_x3_v0(
+  reg ptr u64[25] state)
+  ->
+  stack u64[21*3],
+  reg ptr u64[25]
+{
+  stack u64[21*3] b168x3;
+  reg u256[7] state_avx2;
+  inline int n;
+  reg u64 i t;
+
+  state_avx2 = __stavx2_pack(state);
+
+  for n=0 to 3 // there are no scalar/#mmx registers available (not true for this case; TODO)
+  {
+    state_avx2 = _keccakf1600_avx2(state_avx2);
+
+    state = __stavx2_unpack(state, state_avx2);
+
+    i = 0;
+    while(i < 21)
+    { t = state[(int)i];
+      b168x3[n*21 + (int) i] = t;
+      i += 1;
+    }
+  }
+
+  return b168x3, state;
+}
+
+inline fn xof_next_bytes_x3_v1(
   reg ptr u64[25] state)
   ->
   stack u64[21*3],
@@ -135,18 +166,24 @@ inline fn xof_next_bytes_x3(
   stack u64[21*3] b168x3;
   reg u256[7] state_avx2;
   stack u256[7] state_avx2_s;
-  inline int n;
+  inline int n m;
   reg u64 t;
+
+  // [ 0  0  0  0  ]
+  // [ 1  2  3  4  ]
+  // [ 10 20 5  15 ]
+  // [ 16 7  23 14 ]
+  // [ 11 22 8  19 ]
+  // [ 21 17 13 9  ]
+  // [ 6  12 18 24 ] 
 
   //
   t = state[u64 0];
   state_avx2_s[u64 0] = t;
-  t = state[u64 0];
   state_avx2_s[u64 1] = t;
-  t = state[u64 0];
   state_avx2_s[u64 2] = t;
-  t = state[u64 0];
   state_avx2_s[u64 3] = t;
+
   t = state[u64 1];
   state_avx2_s[u64 4] = t;
   t = state[u64 2];
@@ -155,6 +192,7 @@ inline fn xof_next_bytes_x3(
   state_avx2_s[u64 6] = t;
   t = state[u64 4];
   state_avx2_s[u64 7] = t;
+
   t = state[u64 10];
   state_avx2_s[u64 8] = t;
   t = state[u64 20];
@@ -163,6 +201,7 @@ inline fn xof_next_bytes_x3(
   state_avx2_s[u64 10] = t;
   t = state[u64 15];
   state_avx2_s[u64 11] = t;
+
   t = state[u64 16];
   state_avx2_s[u64 12] = t;
   t = state[u64 7];
@@ -171,6 +210,7 @@ inline fn xof_next_bytes_x3(
   state_avx2_s[u64 14] = t;
   t = state[u64 14];
   state_avx2_s[u64 15] = t;
+
   t = state[u64 11];
   state_avx2_s[u64 16] = t;
   t = state[u64 22];
@@ -179,6 +219,7 @@ inline fn xof_next_bytes_x3(
   state_avx2_s[u64 18] = t;
   t = state[u64 19];
   state_avx2_s[u64 19] = t;
+
   t = state[u64 21];
   state_avx2_s[u64 20] = t;
   t = state[u64 17];
@@ -187,6 +228,7 @@ inline fn xof_next_bytes_x3(
   state_avx2_s[u64 22] = t;
   t = state[u64 9];
   state_avx2_s[u64 23] = t;
+
   t = state[u64 6];
   state_avx2_s[u64 24] = t;
   t = state[u64 12];
@@ -197,15 +239,15 @@ inline fn xof_next_bytes_x3(
   state_avx2_s[u64 27] = t;
   //
 
-  for n=0 to 7
-  { state_avx2[n] = state_avx2_s[n]; }
+  for m=0 to 7
+  { state_avx2[m] = state_avx2_s[m]; }
 
   for n=0 to 3 // there are no scalar/#mmx registers available
   {
     state_avx2 = _keccakf1600_avx2(state_avx2);
 
-    for n=0 to 7
-    { state_avx2_s[n] = state_avx2[n]; }
+    for m=0 to 7
+    { state_avx2_s[m] = state_avx2[m]; }
 
     // copy state // todo move outside
     t = state_avx2_s[u64 3];
@@ -216,6 +258,7 @@ inline fn xof_next_bytes_x3(
     b168x3[n*21 + 2] = t;
     t = state_avx2_s[u64 6];
     b168x3[n*21 + 3] = t;
+
     t = state_avx2_s[u64 7];
     b168x3[n*21 + 4] = t;
     t = state_avx2_s[u64 8];
@@ -224,6 +267,7 @@ inline fn xof_next_bytes_x3(
     b168x3[n*21 + 20] = t;
     t = state_avx2_s[u64 10];
     b168x3[n*21 + 5] = t;
+
     t = state_avx2_s[u64 11];
     b168x3[n*21 + 15] = t;
     t = state_avx2_s[u64 12];
@@ -232,6 +276,7 @@ inline fn xof_next_bytes_x3(
     b168x3[n*21 + 7] = t;
     t = state_avx2_s[u64 15];
     b168x3[n*21 + 14] = t;
+
     t = state_avx2_s[u64 16];
     b168x3[n*21 + 11] = t;
     t = state_avx2_s[u64 18];
@@ -240,6 +285,7 @@ inline fn xof_next_bytes_x3(
     b168x3[n*21 + 19] = t;
     t = state_avx2_s[u64 21];
     b168x3[n*21 + 17] = t;
+
     t = state_avx2_s[u64 22];
     b168x3[n*21 + 13] = t;
     t = state_avx2_s[u64 23];
@@ -248,23 +294,67 @@ inline fn xof_next_bytes_x3(
     b168x3[n*21 + 6] = t;
     t = state_avx2_s[u64 25];
     b168x3[n*21 + 12] = t;
+
     t = state_avx2_s[u64 26];
     b168x3[n*21 + 18] = t;
   }
 
-  n = 3;
+  t = state_avx2_s[u64 3];
+  state[0] = t;
+
+  t = state_avx2_s[u64 4];
+  state[1] = t;
+  t = state_avx2_s[u64 5];
+  state[2] = t;
+  t = state_avx2_s[u64 6];
+  state[3] = t;
+  t = state_avx2_s[u64 7];
+  state[4] = t;
+
+  t = state_avx2_s[u64 8];
+  state[10] = t;
+  t = state_avx2_s[u64 9];
+  state[20] = t;
+  t = state_avx2_s[u64 10];
+  state[5] = t;
+  t = state_avx2_s[u64 11];
+  state[15] = t;
+
+  t = state_avx2_s[u64 12];
+  state[16] = t;
+  t = state_avx2_s[u64 13];
+  state[7] = t;
+  t = state_avx2_s[u64 14];
+  state[23] = t;
+  t = state_avx2_s[u64 15];
+  state[14] = t;
+
+  t = state_avx2_s[u64 16];
+  state[11] = t;
+  t = state_avx2_s[u64 17];
+  state[22] = t;
+  t = state_avx2_s[u64 18];
+  state[8] = t;
+  t = state_avx2_s[u64 19];
+  state[19] = t;
 
   t = state_avx2_s[u64 20];
-  b168x3[n*21 + 21] = t;
+  state[21] = t;
+  t = state_avx2_s[u64 21];
+  state[17] = t;
+  t = state_avx2_s[u64 22];
+  state[13] = t;
+  t = state_avx2_s[u64 23];
+  state[9] = t;
 
-  t = state_avx2_s[u64 17];
-  b168x3[n*21 + 22] = t;
-
-  t = state_avx2_s[u64 14];
-  b168x3[n*21 + 23] = t;
-
+  t = state_avx2_s[u64 24];
+  state[6] = t;
+  t = state_avx2_s[u64 25];
+  state[12] = t;
+  t = state_avx2_s[u64 26];
+  state[18] = t;
   t = state_avx2_s[u64 27];
-  b168x3[n*21 + 24] = t;
+  state[24] = t;
 
   return b168x3, state;
 }
@@ -617,7 +707,7 @@ inline fn gen_matrix_sample_fast(
 
     () = #spill(counter, matrix, matrix_offset);
 
-  _b168x3, xof_state = xof_next_bytes_x3(xof_state);
+  _b168x3, xof_state = xof_next_bytes_x3_v1(xof_state);
 
     () = #unspill(counter, matrix, matrix_offset);
 
