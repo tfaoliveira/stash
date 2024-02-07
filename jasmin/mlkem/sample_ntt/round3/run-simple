@@ -12,7 +12,8 @@ for implementation in \
 \
  src/gen_matrix/mlkem768/pqcrystals_avx2/gen_matrix_bmi1_table.s \
  src/gen_matrix/mlkem768/avx2_opt1_sct/gen_matrix_bmi1.s \
- src/gen_matrix/mlkem768/avx2_opt2_sct/gen_matrix_avx2.s
+ src/gen_matrix/mlkem768/avx2_opt2_sct/gen_matrix_avx2.s \
+ src/gen_matrix/mlkem768/avx2_opt3_sct/gen_matrix_bmi1.s
 do
 
   target_dirname=$(dirname $implementation)
